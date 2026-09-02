@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inteligencias Múltiples · Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#f7f3ee; --surface:#ffffff; --surf2:#f0ebe3; --border:#ddd3c3;
+  --text:#1e140a; --text2:#4a3318; --muted:#7a5e3e;
+  --accent:#c26830; --accent2:#7b3e14;
+  --sb-bg:#2c1a0e; --sb-text:#f5dfc8; --sb-muted:#a07858; --sb-hover:#3d2614; --sb-active:#4f3020;
+  --alto-bg:#c6efce; --alto-fg:#1a5e1f;
+  --malto-bg:#ffeb9c; --malto-fg:#6e3f00;
+  --medio-bg:#ffd9a0; --medio-fg:#5e2c00;
+  --mbajo-bg:#ffc7ce; --mbajo-fg:#7a0000;
+  --bajo-bg:#cc0000;  --bajo-fg:#ffffff;
+  --nd-bg:#e8e4de;    --nd-fg:#7a5e3e;
+  --gi-a:#3b6ea5; --gi-a-fill:rgba(59,110,165,.55); --gi-a-bord:#254e7e;
+  --gi-b:#5a8f4e; --gi-b-fill:rgba(90,143,78,.55);  --gi-b-bord:#3a6232;
+  --font:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;display:flex;}
+
+/* SIDEBAR */
+#sidebar{width:268px;min-width:190px;background:var(--sb-bg);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow:hidden;}
+#sb-head{padding:18px 16px 14px;background:linear-gradient(160deg,#5a2a0e,#3a1808);border-bottom:1px solid #4a2810;}
+#sb-head h1{font-size:13px;font-weight:800;color:#f5c89a;letter-spacing:.09em;text-transform:uppercase;}
+#sb-head p{font-size:11px;color:var(--sb-muted);margin-top:3px;}
+#sb-search{padding:8px 10px;border-bottom:1px solid #3a2010;}
+#sb-search input{width:100%;background:#1e1006;border:1px solid #4a2810;border-radius:6px;padding:6px 10px;color:var(--sb-text);font-size:12px;outline:none;}
+#sb-search input::placeholder{color:var(--sb-muted);}
+#sb-search input:focus{border-color:var(--accent);}
+#tree{flex:1;overflow-y:auto;padding:5px 0;}
+#tree::-webkit-scrollbar{width:4px;}
+#tree::-webkit-scrollbar-thumb{background:#4a2810;border-radius:2px;}
+
+.tt-label{display:flex;align-items:center;gap:7px;padding:7px 12px;font-size:12px;font-weight:700;color:#f0b882;cursor:pointer;user-select:none;transition:background .13s;}
+.tt-label:hover{background:var(--sb-hover);}
+.tt-label .arr{font-size:9px;color:var(--sb-muted);transition:transform .18s;}
+.tree-terr.open>.tt-label .arr{transform:rotate(90deg);}
+.tt-children{display:none;}
+.tree-terr.open>.tt-children{display:block;}
+
+.ts-label{display:flex;align-items:center;gap:7px;padding:5px 12px 5px 26px;font-size:12px;color:var(--sb-muted);cursor:pointer;user-select:none;transition:background .13s;}
+.ts-label:hover{background:var(--sb-hover);color:var(--sb-text);}
+.ts-label .arr{font-size:9px;transition:transform .18s;}
+.tree-suc.open>.ts-label .arr{transform:rotate(90deg);}
+.ts-children{display:none;}
+.tree-suc.open>.ts-children{display:block;}
+
+.tp-item{display:flex;align-items:center;gap:5px;padding:4px 12px 4px 40px;font-size:11px;color:var(--sb-muted);cursor:pointer;user-select:none;border-left:3px solid transparent;transition:background .12s,color .12s;}
+.tp-item:hover{background:var(--sb-hover);color:var(--sb-text);}
+.tp-item.active{background:var(--sb-active);color:#f0b882;border-left-color:var(--accent);font-weight:600;}
+.badge{margin-left:auto;background:rgba(255,255,255,.08);color:var(--sb-muted);border-radius:10px;font-size:10px;padding:1px 6px;flex-shrink:0;}
+
+/* MAIN */
+#main{flex:1;overflow-y:auto;padding:26px 28px;min-width:0;}
+#main::-webkit-scrollbar{width:5px;}
+#main::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.view{display:none;}
+.view.active{display:block;}
+
+/* PANEL */
+.panel{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px;box-shadow:0 1px 5px rgba(80,40,10,.08);}
+.panel h3{font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;padding-bottom:8px;border-bottom:1.5px solid var(--surf2);}
+.cw   {position:relative;height:290px;}
+.cw-sm{position:relative;height:250px;}
+.cw-md{position:relative;height:340px;}
+.cw-lg{position:relative;height:380px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:12px;margin-bottom:22px;}
+.stat-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(80,40,10,.07);}
+.stat-card .num{font-size:30px;font-weight:800;color:var(--accent);}
+.stat-card .lbl{font-size:10px;font-weight:700;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+
+/* TERR CARDS */
+.terr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:22px;}
+.terr-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:border-color .18s,box-shadow .18s;box-shadow:0 1px 3px rgba(80,40,10,.06);}
+.terr-card:hover{border-color:var(--accent);box-shadow:0 3px 10px rgba(194,104,48,.18);}
+.terr-card .tc-name{font-size:14px;font-weight:800;color:var(--accent2);margin-bottom:4px;}
+.terr-card .tc-info{font-size:11px;color:var(--muted);font-weight:500;}
+
+/* MINI CARDS */
+.cards-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:10px;margin-bottom:20px;}
+.mini-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .18s,box-shadow .18s;box-shadow:0 1px 3px rgba(80,40,10,.05);}
+.mini-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(194,104,48,.15);}
+.mc-name{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mc-chips{display:flex;flex-wrap:wrap;gap:3px;}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:var(--surf2);color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);position:sticky;top:0;}
+td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+tr.rc{cursor:pointer;}
+tr.rc:hover td{background:#fdf2e8;}
+
+/* BREADCRUMB */
+.bc{font-size:11px;color:var(--muted);display:flex;gap:5px;align-items:center;margin-bottom:7px;flex-wrap:wrap;}
+.bc .bl{cursor:pointer;color:var(--accent);font-weight:700;}
+.bc .bl:hover{text-decoration:underline;}
+.vt{font-size:22px;font-weight:800;color:var(--accent2);}
+.vs{font-size:12px;color:var(--muted);margin-top:2px;font-weight:500;}
+.vh{margin-bottom:20px;}
+.slbl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:11px;}
+
+/* PERSONA */
+.p-head{background:linear-gradient(135deg,#fdebd8,#fdf6ef);border:1.5px solid var(--border);border-radius:14px;padding:22px;margin-bottom:18px;}
+.p-name{font-size:22px;font-weight:800;color:var(--accent2);margin-bottom:8px;}
+.p-meta{display:flex;gap:10px;flex-wrap:wrap;}
+.mtag{font-size:11px;color:var(--text2);background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-weight:600;}
+
+.intel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px;}
+.ic{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:14px;}
+.ic .ic-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:7px;}
+.ic .ic-score{font-size:28px;font-weight:800;margin-bottom:2px;}
+.ic .ic-pc{font-size:12px;color:var(--muted);margin-bottom:5px;}
+.nchip{display:inline-block;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;}
+
+/* BARRAS HORIZONTALES */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.bar-lbl{width:152px;font-size:11px;color:var(--text2);text-align:right;flex-shrink:0;font-weight:600;}
+.bar-trk{flex:1;height:11px;background:var(--surf2);border-radius:6px;overflow:hidden;border:1px solid var(--border);}
+.bar-fill{height:100%;border-radius:6px;transition:width .5s;}
+.bar-val{width:48px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0;}
+
+/* CHIPS */
+.chip{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.n-Alto      {background:var(--alto-bg); color:var(--alto-fg);}
+.n-MedioAlto {background:var(--malto-bg);color:var(--malto-fg);}
+.n-Medio     {background:var(--medio-bg);color:var(--medio-fg);}
+.n-MedioBajo {background:var(--mbajo-bg);color:var(--mbajo-fg);}
+.n-Bajo      {background:var(--bajo-bg); color:var(--bajo-fg);}
+.n-ND        {background:var(--nd-bg);   color:var(--nd-fg);}
+
+/* LEGEND */
+.leg{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;}
+.ld{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-weight:600;}
+.ld span{width:13px;height:13px;border-radius:3px;display:inline-block;flex-shrink:0;}
+
+/* SECCIÓN de radar por territorio en inicio */
+.terr-radars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:18px;}
+.tr-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 1px 5px rgba(80,40,10,.07);}
+.tr-card h4{font-size:11px;font-weight:800;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1.5px solid var(--surf2);cursor:pointer;}
+.tr-card h4:hover{color:var(--accent);}
+.tr-card h4 small{font-size:10px;color:var(--muted);font-weight:500;text-transform:none;margin-left:6px;}
+.cw-tr{position:relative;height:230px;}
+
+@media(max-width:860px){.two-col,.three-col{grid-template-columns:1fr;}#sidebar{width:220px;}}
+@media(max-width:580px){body{flex-direction:column;}#sidebar{width:100%;height:auto;position:relative;}#tree{max-height:200px;}#main{padding:13px;}}
+
+  .map-legend{display:flex;flex-direction:column;gap:5px;}
+  .ml-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2);font-weight:600;}
+  .ml-item span{width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0;}
+  .map-marker{cursor:pointer;}
+  .map-marker circle:first-child{transition:stroke .15s;}
+  .map-marker:hover circle:first-child{stroke:#ffd700;stroke-width:2.5;}
+
+#sb-upload{padding:8px 10px;border-bottom:1px solid #3a2010;}
+#xlsx-btn{width:100%;background:#3d2614;border:1px solid #5a3a1e;border-radius:6px;padding:7px 10px;color:#f5c89a;font-size:11.5px;font-weight:700;cursor:pointer;transition:background .13s,border-color .13s;}
+#xlsx-btn:hover{background:#4f3020;border-color:var(--accent);}
+#xlsx-btn:active{background:#2c1a0e;}
+#xlsx-status{font-size:10.5px;margin-top:6px;line-height:1.4;min-height:0;}
+#xlsx-status.ok{color:#9fd8a0;}
+#xlsx-status.err{color:#f0a080;}
+#xlsx-status.load{color:var(--sb-muted);}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sb-head">
+    <h1>Inteligencias Múltiples</h1>
+    <p>Resultados por Delegados</p>
+  </div>
+  <div id="sb-search">
+    <input id="s-input" type="text" placeholder="Buscar persona…" oninput="filterTree(this.value)">
+  </div>
+  <div id="sb-upload">
+    <input id="xlsx-input" type="file" accept=".xlsx" style="display:none" onchange="cargarExcel(this.files[0])">
+    <button id="xlsx-btn" onclick="document.getElementById('xlsx-input').click()">⭱ Cargar Excel (.xlsx)</button>
+    <div id="xlsx-status"></div>
+  </div>
+  <div id="tree"></div>
+</div>
+
+<div id="main">
+
+  <!-- ══ WELCOME ══ -->
+  <div id="v-welcome" class="view active">
+    <div style="font-size:26px;font-weight:800;color:var(--accent2);margin-bottom:4px">Dashboard de Resultados</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:22px;font-weight:500">Test de Inteligencias Múltiples · Gardner · 8 dimensiones</div>
+    
+  <div class="panel" id="map-panel" style="margin-bottom:18px">
+    <h3>Mapa de sucursales — Ecuador</h3>
+    <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:300px;position:relative">
+        <svg id="ecuador-map" viewBox="0 0 640 580" style="width:100%;max-width:640px;height:auto;display:block;border-radius:10px;border:1px solid var(--border)">
+          <defs>
+            <filter id="mapshadow" x="-5%" y="-5%" width="110%" height="110%">
+              <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,.15)"/>
+            </filter>
+            <linearGradient id="oceanGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#a8cfe0"/>
+              <stop offset="100%" stop-color="#c8e2f0"/>
+            </linearGradient>
+          </defs>
+          <!-- Océano -->
+          <rect width="640" height="580" fill="url(#oceanGrad)" rx="10"/>
+          <!-- Ecuador mainland (high-res outline) -->
+          <g filter="url(#mapshadow)">
+            <path d="M247.13,22.33 L253.0,25.71 L255.1,28.17 L258.05,30.17 L259.08,31.59 L260.06,33.45 L261.57,35.15 L263.53,36.43 L265.87,37.04 L267.44,36.82 L268.85,36.44 L269.79,36.68 L269.96,38.3 L270.34,39.16 L272.43,41.02 L272.99,42.38 L274.44,41.68 L275.94,41.58 L281.48,42.65 L282.19,43.11 L283.31,43.85 L292.72,52.64 L295.08,54.15 L296.99,54.93 L302.94,56.28 L304.98,57.19 L318.0,65.46 L322.21,67.18 L329.3,67.4 L336.1,69.55 L337.18,69.57 L337.69,69.34 L338.17,69.4 L339.15,70.26 L339.5,71.11 L339.47,72.05 L339.68,72.95 L340.74,73.71 L343.07,74.47 L345.2,74.87 L347.23,74.9 L349.24,74.56 L357.21,72.01 L359.68,72.03 L362.67,74.0 L363.32,80.05 L365.44,82.69 L372.02,86.5 L375.66,87.72 L378.59,87.38 L379.07,87.32 L383.19,88.19 L384.54,92.26 L385.18,101.1 L386.09,103.92 L386.53,106.43 L387.56,108.58 L390.25,110.32 L393.75,111.39 L404.39,113.21 L406.27,113.78 L407.75,114.42 L409.31,114.81 L411.48,114.7 L416.52,113.11 L418.26,112.84 L419.61,113.13 L421.71,113.57 L425.54,117.2 L428.51,118.05 L432.51,118.11 L433.75,118.28 L435.41,118.77 L436.43,119.38 L438.61,121.23 L440.32,122.28 L441.75,122.71 L443.27,122.76 L450.21,121.89 L451.47,121.99 L455.04,123.34 L456.56,123.3 L456.31,119.96 L457.55,119.57 L461.0,120.36 L465.88,120.81 L467.31,121.17 L468.89,122.1 L471.57,124.19 L473.46,124.74 L474.92,124.58 L477.51,123.46 L487.43,122.5 L489.2,121.51 L488.16,115.93 L488.41,109.66 L488.36,109.12 L489.31,109.26 L491.47,109.15 L492.53,108.98 L493.46,108.69 L495.95,106.2 L496.51,105.77 L497.03,105.51 L498.84,104.36 L499.95,104.1 L500.95,104.47 L503.71,106.92 L505.63,107.98 L507.63,108.71 L509.79,109.13 L512.24,109.26 L514.42,109.17 L515.53,109.24 L516.37,109.55 L516.97,110.45 L517.53,112.67 L518.04,113.33 L519.87,113.25 L522.4,112.57 L524.65,112.34 L525.61,113.6 L526.05,114.6 L532.75,121.72 L533.25,122.78 L533.7,124.4 L534.8,125.75 L537.29,127.68 L543.37,130.84 L544.2,131.99 L548.21,134.48 L551.03,135.8 L552.68,136.36 L554.62,136.76 L556.84,136.92 L559.14,136.73 L563.45,135.91 L565.33,135.72 L567.32,136.27 L568.9,137.46 L570.18,138.66 L571.2,139.21 L572.99,139.71 L577.69,143.23 L583.51,146.24 L585.91,146.94 L587.86,148.12 L593.46,149.02 L599.8,150.97 L601.65,151.89 L600.47,153.18 L598.2,154.53 L596.93,155.06 L595.59,155.43 L594.0,155.5 L590.58,155.09 L589.74,155.15 L587.05,156.66 L584.47,156.45 L577.43,153.26 L576.07,152.99 L574.67,152.97 L572.88,153.13 L571.32,152.88 L569.5,152.26 L567.7,151.86 L566.24,152.27 L565.68,153.73 L566.16,155.59 L567.14,157.23 L568.04,158.11 L568.99,158.28 L571.13,158.14 L572.1,158.25 L573.32,158.87 L575.41,160.53 L576.65,161.06 L578.78,161.65 L580.38,162.49 L581.52,163.72 L584.73,173.21 L586.58,176.78 L589.44,180.09 L591.3,181.56 L592.43,182.15 L593.46,182.3 L594.69,182.21 L595.26,182.48 L595.67,182.98 L599.57,185.52 L600.0,185.92 L600.51,186.88 L600.9,187.28 L601.41,187.37 L602.35,186.96 L602.8,187.09 L603.93,188.58 L604.3,190.14 L603.99,193.44 L604.07,194.13 L604.3,194.74 L604.44,195.38 L604.24,196.12 L603.34,196.92 L602.12,197.44 L601.06,198.04 L600.6,199.04 L600.71,199.87 L601.13,201.41 L601.19,202.27 L600.97,203.13 L600.34,204.64 L600.3,205.69 L604.74,218.37 L604.77,219.13 L604.61,220.58 L604.79,221.36 L605.57,222.32 L606.52,223.02 L607.25,223.85 L607.27,224.42 L606.38,224.47 L601.65,224.47 L597.41,224.9 L595.13,224.85 L594.14,224.18 L593.56,223.33 L592.19,222.01 L589.36,219.82 L588.74,220.56 L587.48,224.71 L584.47,234.62 L581.47,244.53 L578.47,254.44 L575.47,264.35 L574.0,269.2 L572.7,272.12 L571.93,272.91 L570.35,274.51 L564.85,278.79 L560.83,282.74 L555.84,287.62 L550.85,292.51 L545.85,297.4 L540.85,302.29 L535.86,307.19 L530.86,312.08 L525.87,316.96 L520.88,321.85 L514.91,325.69 L508.95,329.53 L502.98,333.36 L497.01,337.2 L491.04,341.05 L485.07,344.88 L479.11,348.72 L473.14,352.56 L467.47,356.21 L463.03,358.47 L461.54,359.23 L452.33,361.94 L439.75,365.64 L427.18,369.33 L414.6,373.02 L402.03,376.72 L389.45,380.41 L376.88,384.11 L364.3,387.81 L351.73,391.5 L348.96,392.31 L345.1,393.45 L343.22,394.25 L335.85,399.66 L325.75,411.04 L320.91,414.41 L319.51,415.7 L316.42,420.68 L315.18,422.18 L311.54,424.45 L310.36,425.64 L310.35,427.48 L311.5,429.01 L313.08,429.95 L314.34,431.16 L314.55,433.47 L313.63,435.19 L312.09,435.74 L310.32,436.06 L308.73,437.14 L307.37,437.69 L306.41,436.16 L305.03,430.76 L304.28,429.5 L303.03,428.66 L298.7,427.64 L296.6,427.4 L294.92,427.82 L293.83,429.41 L293.92,429.95 L294.53,431.6 L294.47,432.52 L293.71,436.15 L292.41,439.57 L292.27,439.93 L290.43,443.3 L289.76,445.03 L289.53,446.67 L289.57,449.69 L289.99,451.4 L289.93,452.22 L289.16,452.7 L287.89,452.89 L287.41,453.03 L287.36,453.46 L287.36,454.52 L288.64,459.95 L288.03,461.57 L285.59,463.56 L284.8,463.99 L283.57,464.48 L282.96,464.86 L281.93,466.48 L281.22,468.09 L280.23,474.31 L280.24,474.89 L279.82,475.24 L278.43,475.88 L277.14,476.22 L275.92,476.3 L274.81,476.54 L273.79,477.43 L273.31,478.81 L273.41,483.81 L272.34,487.54 L266.24,498.24 L265.29,501.92 L264.43,503.56 L262.59,504.85 L261.76,506.61 L261.88,509.76 L262.68,512.88 L263.9,514.49 L266.28,515.71 L266.01,517.06 L264.47,518.65 L263.02,520.61 L262.76,522.15 L262.86,523.83 L262.73,525.45 L261.83,526.8 L259.11,528.31 L258.03,528.91 L248.87,531.98 L244.69,533.96 L240.14,537.49 L238.27,539.65 L237.14,541.96 L237.21,544.26 L239.47,548.04 L239.98,550.05 L238.92,551.72 L236.6,552.15 L233.97,552.17 L231.97,552.59 L230.9,553.98 L229.79,558.07 L229.07,559.84 L226.49,562.14 L223.61,564.14 L221.75,562.61 L220.66,561.94 L219.58,561.51 L218.55,561.41 L216.93,561.75 L215.92,561.78 L214.17,561.45 L210.82,560.47 L209.07,560.23 L206.63,560.3 L201.97,560.44 L199.68,559.93 L198.28,558.51 L197.22,556.74 L195.9,555.14 L195.01,554.65 L193.06,554.04 L192.19,553.51 L191.66,552.79 L191.01,551.13 L190.47,550.38 L188.73,549.3 L186.67,548.39 L184.94,547.23 L184.22,545.45 L183.92,543.89 L183.9,543.78 L181.28,539.65 L180.13,534.66 L177.21,531.08 L177.28,529.28 L179.59,525.84 L179.84,524.6 L179.28,523.81 L177.25,522.81 L174.84,522.83 L174.22,522.55 L172.8,521.67 L172.02,521.35 L166.97,517.17 L164.2,516.01 L160.59,516.42 L157.14,518.14 L150.43,519.88 L146.71,519.39 L144.23,517.24 L142.13,514.6 L139.59,512.64 L136.97,512.08 L134.4,512.06 L131.8,511.8 L129.09,510.55 L127.07,509.36 L123.84,506.4 L122.03,505.11 L120.31,504.59 L118.28,504.27 L116.61,503.84 L115.98,502.93 L115.69,503.01 L111.62,503.46 L110.52,503.77 L109.5,504.2 L108.66,504.76 L107.81,505.94 L106.78,508.89 L106.03,510.22 L104.46,511.64 L96.77,516.59 L92.67,518.43 L91.71,519.16 L90.93,519.22 L89.15,519.27 L87.49,518.76 L83.0,516.63 L81.65,515.61 L80.77,513.85 L81.15,512.41 L94.37,497.67 L95.47,495.81 L90.86,496.29 L86.53,497.37 L83.04,497.05 L80.92,493.34 L80.93,492.55 L81.32,490.96 L81.28,490.16 L80.74,489.09 L79.09,487.18 L78.59,486.14 L78.77,484.6 L78.78,484.53 L79.64,482.42 L80.8,480.38 L81.89,479.03 L83.39,478.13 L85.23,477.68 L87.25,477.56 L89.29,477.65 L91.35,478.2 L95.57,480.1 L97.45,480.43 L99.54,479.57 L101.22,477.82 L102.67,475.87 L104.09,474.4 L111.89,471.39 L113.47,469.89 L113.49,469.1 L113.5,469.0 L112.89,468.51 L111.99,468.02 L111.12,467.17 L110.85,466.45 L110.85,464.89 L110.73,464.14 L109.84,462.44 L107.84,459.75 L107.37,458.06 L107.55,457.41 L107.98,456.83 L108.31,456.18 L108.21,455.35 L107.6,453.78 L107.51,453.13 L107.51,452.29 L107.67,451.55 L108.32,449.91 L108.48,449.08 L108.36,448.16 L107.79,446.55 L107.77,445.61 L107.5,444.82 L106.63,444.49 L105.65,444.22 L105.0,443.63 L105.01,442.98 L105.79,440.71 L105.97,439.11 L105.97,438.28 L105.73,437.54 L105.09,436.93 L103.44,436.35 L102.84,435.88 L102.61,434.13 L103.22,432.38 L103.43,430.92 L102.03,430.0 L98.24,429.16 L96.61,428.45 L95.93,428.15 L95.71,427.55 L95.59,426.92 L95.89,426.05 L97.24,425.38 L97.86,424.39 L98.35,423.21 L99.31,422.03 L98.3,424.39 L97.95,424.96 L98.57,426.68 L99.77,425.9 L100.33,423.26 L101.36,422.03 L104.09,424.33 L105.45,423.85 L112.68,422.61 L113.93,422.71 L114.75,422.88 L115.48,422.92 L116.44,422.61 L118.72,420.35 L119.17,420.02 L122.95,413.41 L124.01,412.22 L126.25,412.58 L126.71,414.58 L126.01,418.6 L127.08,418.07 L127.74,417.25 L128.31,416.31 L129.11,415.4 L130.02,414.8 L133.2,413.11 L134.68,411.67 L135.65,409.91 L136.2,408.02 L136.67,404.77 L138.29,401.74 L141.66,397.21 L142.51,395.53 L141.52,394.07 L141.88,392.17 L143.2,388.88 L143.42,387.41 L146.54,378.83 L148.65,375.65 L148.88,375.1 L149.86,373.3 L150.23,371.34 L152.36,366.45 L153.5,365.0 L156.5,362.42 L157.36,360.93 L157.49,358.91 L156.85,355.15 L155.5,352.22 L155.17,351.75 L152.98,351.86 L151.85,351.78 L151.05,351.45 L149.84,349.9 L147.91,345.39 L146.66,343.73 L146.05,342.71 L145.87,341.52 L145.96,336.62 L145.28,332.71 L145.24,331.61 L145.86,329.77 L146.02,328.63 L145.55,328.12 L145.39,327.78 L144.12,326.35 L143.81,326.11 L143.66,325.54 L143.36,325.11 L143.14,324.54 L143.2,323.53 L143.7,322.6 L144.36,321.89 L144.59,321.13 L143.81,320.09 L145.36,318.73 L146.94,318.34 L148.17,317.73 L148.65,315.76 L149.41,314.81 L151.06,314.18 L152.71,313.25 L153.44,311.43 L147.51,314.27 L146.86,314.68 L146.6,315.41 L146.54,316.9 L145.81,317.17 L142.57,317.35 L141.83,318.05 L141.66,318.71 L140.8,320.76 L139.95,324.12 L139.82,326.55 L140.43,328.99 L143.47,333.44 L143.7,335.99 L142.14,352.36 L141.08,355.77 L140.39,356.69 L137.65,359.26 L136.68,359.79 L135.07,360.2 L131.6,361.88 L130.16,362.14 L129.15,361.72 L128.57,360.59 L127.77,360.36 L125.63,360.56 L124.91,360.36 L123.64,359.54 L123.11,358.15 L124.45,356.84 L127.43,355.15 L128.34,353.39 L128.79,352.12 L129.82,351.38 L132.52,351.13 L133.15,351.48 L133.75,352.2 L134.51,352.85 L135.62,352.9 L136.58,352.42 L137.03,351.71 L136.96,350.85 L136.36,349.93 L135.92,351.7 L134.57,351.33 L132.21,349.41 L130.01,349.62 L128.02,350.47 L126.57,350.85 L126.01,349.67 L126.42,347.83 L128.3,344.23 L128.73,342.22 L129.11,341.18 L130.01,340.77 L131.15,340.58 L132.21,340.22 L132.96,339.56 L135.0,336.84 L134.08,337.04 L133.57,337.3 L132.52,338.22 L131.69,338.51 L129.66,338.37 L128.73,338.45 L127.6,339.1 L126.71,340.13 L122.4,349.49 L115.57,357.53 L112.49,360.33 L109.24,361.51 L108.49,362.61 L107.74,363.4 L106.82,363.86 L105.86,363.85 L105.34,363.5 L104.97,362.98 L104.46,362.42 L103.0,361.88 L102.04,362.51 L101.69,363.89 L102.04,365.58 L102.42,365.83 L105.15,368.16 L105.5,368.86 L105.57,369.81 L105.46,371.63 L104.45,372.4 L102.16,372.14 L97.95,370.75 L93.72,367.73 L92.25,367.03 L90.95,365.97 L90.37,365.58 L89.74,365.43 L87.96,365.23 L87.02,365.01 L83.21,362.96 L72.59,352.44 L64.34,345.96 L61.11,345.08 L58.19,343.9 L54.95,344.0 L49.65,342.52 L47.81,341.81 L43.61,338.69 L41.4,337.99 L39.83,338.0 L38.64,337.81 L37.88,337.05 L37.29,334.21 L36.52,332.95 L34.88,330.98 L33.5,329.79 L29.79,327.29 L29.38,326.75 L28.91,325.87 L28.7,325.05 L29.08,324.68 L29.88,324.84 L30.25,325.2 L30.46,325.59 L30.79,325.83 L33.33,326.34 L34.53,326.4 L35.07,326.67 L35.57,328.1 L36.87,329.28 L39.37,329.19 L42.94,328.1 L48.03,324.65 L51.93,323.02 L55.5,319.67 L56.26,314.67 L54.84,312.12 L54.05,309.5 L53.75,308.82 L54.19,307.94 L55.27,307.76 L56.68,307.13 L56.98,305.08 L56.7,302.94 L53.94,294.0 L52.44,290.46 L51.79,288.91 L50.91,287.61 L49.96,286.65 L48.78,285.09 L46.42,280.21 L45.05,278.72 L44.59,277.64 L44.44,276.41 L44.84,275.45 L48.35,273.38 L47.92,271.42 L47.95,268.98 L48.85,268.28 L50.04,267.37 L51.26,267.11 L52.91,267.12 L53.35,266.03 L53.3,264.83 L53.51,263.2 L54.02,261.74 L53.57,259.81 L54.0,258.61 L55.73,257.9 L55.57,255.85 L52.6,252.39 L46.64,246.39 L41.78,239.21 L39.68,234.92 L38.38,232.46 L39.04,230.73 L40.25,229.72 L41.65,228.72 L42.95,227.54 L43.71,226.72 L44.47,225.9 L45.76,224.72 L46.96,223.54 L47.28,222.81 L48.36,222.45 L49.77,222.81 L51.18,222.81 L52.59,222.08 L53.88,221.62 L55.4,221.89 L56.59,221.53 L57.78,221.17 L57.56,221.9 L59.4,222.63 L60.91,222.72 L62.1,221.85 L62.86,221.58 L63.62,220.76 L64.7,220.49 L65.67,221.67 L66.53,221.85 L68.37,222.03 L70.85,221.21 L73.01,219.58 L75.28,217.58 L76.72,212.35 L77.1,210.71 L78.41,205.28 L80.24,201.1 L82.51,197.29 L83.75,194.84 L84.24,194.39 L85.1,193.84 L86.51,193.66 L87.8,193.3 L88.02,195.48 L89.42,197.2 L92.12,198.2 L94.71,198.47 L100.1,198.56 L100.1,197.57 L97.31,196.93 L94.28,196.38 L92.23,196.38 L90.83,195.48 L89.75,193.12 L88.44,191.13 L87.04,190.67 L86.29,189.76 L86.18,187.77 L85.1,185.4 L84.79,182.97 L83.38,180.32 L81.54,178.5 L80.35,174.96 L81.43,173.77 L83.48,173.6 L86.73,171.41 L89.85,167.44 L90.87,165.96 L91.12,164.82 L92.01,162.99 L92.88,161.63 L95.03,160.99 L96.33,159.27 L97.63,157.46 L99.46,158.82 L101.63,157.91 L104.01,156.37 L106.82,154.64 L112.77,149.19 L117.52,144.04 L119.21,142.3 L119.92,140.64 L120.12,139.6 L120.62,139.25 L121.27,139.07 L123.35,138.51 L124.87,135.33 L125.73,132.52 L126.3,128.11 L126.16,126.09 L125.38,122.5 L125.15,116.14 L126.06,113.92 L126.09,113.2 L126.35,112.88 L127.43,113.32 L127.89,113.74 L128.27,114.36 L128.73,115.62 L129.48,115.62 L129.63,114.57 L130.65,112.92 L130.9,112.18 L130.67,111.11 L130.09,110.38 L128.73,109.26 L126.36,105.98 L125.64,104.32 L125.38,102.63 L125.66,100.77 L126.36,99.8 L127.24,99.01 L128.11,97.67 L128.3,95.92 L127.76,94.21 L127.05,92.75 L126.36,90.34 L125.46,89.34 L124.06,88.71 L122.25,88.49 L120.97,88.08 L120.08,87.07 L119.5,85.77 L119.17,84.47 L119.14,80.85 L120.27,77.3 L122.42,74.29 L125.38,72.32 L127.09,73.04 L128.55,73.19 L131.87,72.94 L133.36,72.58 L135.32,71.05 L136.68,70.7 L138.11,70.51 L140.61,69.68 L143.78,69.23 L145.67,68.04 L146.92,67.77 L147.66,67.46 L150.7,65.43 L151.42,64.79 L152.71,63.23 L153.44,62.61 L155.82,61.7 L161.8,60.11 L164.42,58.54 L164.96,59.4 L165.0,60.17 L162.99,65.43 L163.46,66.68 L164.29,67.42 L165.34,68.03 L166.47,68.92 L167.81,71.2 L168.51,71.85 L166.88,68.08 L165.59,67.16 L165.17,66.62 L165.17,66.15 L165.69,65.38 L165.78,64.9 L165.63,62.8 L165.86,61.19 L166.73,60.01 L168.51,59.17 L172.82,60.21 L177.55,57.96 L184.35,52.75 L186.5,52.28 L193.53,52.75 L194.41,52.58 L196.68,51.82 L197.66,51.65 L200.39,51.69 L201.66,51.52 L202.78,51.03 L205.18,52.09 L208.02,51.76 L210.88,50.93 L213.42,50.45 L215.27,49.63 L222.82,41.23 L224.28,40.56 L226.74,41.27 L228.69,42.64 L229.95,44.36 L230.62,46.41 L230.83,48.78 L232.74,47.93 L233.79,46.68 L234.22,45.11 L234.54,41.41 L235.16,40.45 L236.05,39.68 L237.11,38.4 L237.44,39.12 L238.02,39.45 L238.83,39.4 L239.83,38.98 L240.74,38.27 L240.88,37.67 L240.83,37.01 L241.2,36.11 L242.83,34.55 L244.49,34.32 L248.71,35.53 L247.99,34.32 L246.2,33.92 L244.1,33.74 L242.5,33.18 L241.81,32.0 L242.15,30.89 L243.03,29.91 L246.77,26.79 L247.34,25.67 L247.3,24.4 L246.94,23.26 L247.13,22.33 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="1.5"/>
+<path d="M124.01,366.73 L128.55,366.85 L135.42,370.41 L139.72,371.32 L139.56,371.97 L139.28,372.57 L138.88,373.12 L138.35,373.62 L137.24,374.41 L132.21,376.23 L131.89,376.97 L130.48,378.1 L130.16,378.55 L129.55,379.84 L128.73,381.13 L127.9,381.86 L127.69,381.88 L126.63,383.41 L125.43,385.43 L124.17,387.34 L123.51,388.7 L121.88,389.26 L120.56,390.52 L120.62,392.49 L119.1,393.69 L118.49,394.9 L116.9,396.83 L113.32,396.53 L111.32,397.51 L109.63,397.94 L107.19,397.78 L104.84,397.26 L103.41,396.63 L102.81,394.77 L103.42,391.79 L103.78,381.69 L104.13,380.56 L107.5,375.35 L108.93,371.95 L110.36,371.08 L116.44,369.6 L121.91,367.32 L124.01,366.73 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="1.5"/>
+<path d="M239.83,27.39 L239.85,28.19 L239.99,28.75 L240.46,29.74 L240.56,32.56 L240.07,36.02 L238.75,38.22 L236.36,37.25 L235.4,38.2 L234.31,38.98 L232.28,37.68 L230.79,36.29 L230.46,34.73 L231.92,32.92 L239.83,27.39 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="1.5"/>
+<path d="M148.04,351.86 L149.1,354.03 L151.53,354.79 L152.74,356.57 L150.62,359.25 L147.13,360.78 L146.68,364.48 L144.25,365.75 L142.28,365.63 L141.82,363.71 L143.18,360.53 L145.31,355.94 L148.04,351.86 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="1.5"/>
+
+          </g>
+          <!-- Galápagos inset box -->
+          <rect x="8" y="468" width="118" height="72" rx="6" fill="#c8e2f0" stroke="#9a7a5a" stroke-width="1" stroke-dasharray="4,2"/>
+          <text x="67" y="480" text-anchor="middle" font-size="7.5" fill="#4a3318" font-weight="700" style="pointer-events:none">GALÁPAGOS</text>
+          <g transform="translate(8,468)">
+            <path d="M81.0,512.3 L81.6,512.5 L82.1,512.8 L82.2,513.2 L81.4,513.4 L80.6,513.3 L78.6,512.7 L79.1,512.3 L79.5,512.4 L80.7,512.4 L81.0,512.3 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M63.0,510.9 L63.0,511.0 L63.2,511.0 L63.3,511.1 L63.3,511.2 L63.3,511.3 L63.3,511.4 L63.2,511.4 L63.2,511.5 L63.1,511.5 L62.8,511.6 L62.7,511.6 L62.6,511.7 L62.7,511.9 L62.7,512.0 L62.5,512.1 L61.7,512.4 L61.5,512.5 L60.6,512.4 L60.3,512.2 L59.9,512.0 L59.4,511.8 L59.6,511.6 L59.8,511.4 L60.0,511.1 L60.2,510.6 L60.4,510.4 L60.7,510.3 L60.9,510.5 L61.4,510.4 L62.1,510.5 L62.7,510.7 L63.0,510.9 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M89.8,501.4 L90.1,501.6 L90.4,501.6 L90.8,501.5 L91.1,501.4 L91.1,502.0 L90.7,502.7 L89.9,503.3 L89.2,503.7 L88.3,503.8 L88.2,503.9 L88.1,504.1 L87.8,504.6 L87.3,505.1 L87.0,505.3 L86.6,505.5 L86.2,505.6 L85.9,505.6 L85.0,505.6 L84.8,505.6 L84.2,505.9 L83.9,505.9 L83.6,505.9 L83.1,505.7 L82.9,505.6 L82.0,505.5 L81.8,505.4 L81.7,505.3 L81.9,505.1 L82.2,504.9 L82.4,504.7 L83.4,504.4 L83.7,504.2 L84.0,503.7 L84.2,503.6 L85.3,503.5 L85.6,503.3 L85.9,502.7 L86.2,502.6 L86.8,502.1 L87.0,502.0 L87.2,501.9 L88.1,501.7 L88.3,501.5 L88.7,501.5 L89.5,501.3 L89.8,501.4 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M67.7,499.0 L68.0,499.1 L67.9,499.5 L67.6,500.2 L67.6,500.4 L67.8,500.7 L67.8,500.9 L67.7,500.9 L67.5,501.3 L67.5,501.4 L67.1,501.5 L66.8,501.7 L66.5,502.0 L66.2,502.3 L66.0,502.4 L65.9,502.4 L64.7,502.4 L64.5,502.5 L64.4,502.8 L64.1,502.9 L63.6,503.0 L63.2,503.0 L62.3,502.8 L61.8,502.7 L61.6,502.6 L61.5,502.5 L61.4,502.5 L61.2,502.4 L60.6,501.9 L60.4,501.7 L60.1,501.7 L59.6,501.7 L59.2,501.5 L58.9,501.4 L58.8,501.1 L58.9,500.3 L59.0,499.9 L59.3,499.5 L59.7,499.1 L60.1,498.9 L60.3,498.8 L61.0,498.6 L61.3,498.5 L61.5,498.5 L62.1,498.6 L62.3,498.6 L62.5,498.6 L62.8,498.5 L63.0,498.4 L65.4,498.2 L65.9,498.1 L66.0,498.1 L66.2,498.1 L66.3,498.2 L66.4,498.3 L66.5,498.5 L66.5,498.6 L66.5,498.8 L66.7,498.9 L66.9,498.9 L67.4,499.0 L67.7,499.0 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M37.5,497.5 L37.2,497.6 L35.5,498.1 L35.1,498.2 L34.8,498.2 L34.6,498.1 L34.0,497.9 L33.6,497.8 L32.8,497.6 L32.7,497.6 L32.5,497.6 L32.3,497.6 L32.2,497.5 L32.2,497.5 L32.2,497.4 L32.2,497.4 L31.7,497.1 L31.4,496.7 L31.2,496.4 L31.0,495.6 L30.7,495.0 L30.8,494.7 L33.0,494.8 L33.9,494.5 L35.1,494.3 L35.6,494.2 L35.8,494.2 L36.1,494.3 L37.0,494.9 L37.2,495.0 L37.5,495.1 L37.6,495.5 L37.5,496.1 L37.5,497.5 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M58.4,494.7 L58.7,494.9 L58.5,495.2 L58.0,495.7 L57.8,496.1 L57.4,496.2 L56.8,496.1 L55.7,495.9 L54.0,495.9 L53.5,495.8 L53.1,495.6 L52.6,495.5 L52.0,495.7 L51.7,495.4 L51.5,495.0 L51.3,494.6 L50.6,494.5 L51.7,493.5 L51.8,493.3 L51.6,493.0 L51.8,492.7 L52.2,492.5 L52.7,492.5 L52.9,492.6 L53.0,492.5 L53.1,492.5 L53.6,492.7 L55.3,493.1 L55.9,493.1 L56.7,493.4 L58.0,494.3 L58.7,494.6 L58.6,494.7 L58.5,494.7 L58.4,494.7 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M52.2,502.2 L52.4,502.3 L52.6,502.3 L52.7,502.3 L52.7,502.6 L52.6,502.7 L52.0,502.8 L51.8,502.9 L51.0,504.5 L51.1,505.0 L51.0,505.3 L50.5,505.1 L50.2,505.4 L49.6,505.9 L49.3,506.2 L48.9,506.0 L48.4,506.0 L47.7,506.1 L47.2,506.1 L46.4,506.5 L43.5,507.2 L43.0,507.1 L42.6,507.2 L40.3,506.9 L37.5,507.0 L37.0,506.9 L36.6,506.6 L36.5,506.4 L36.5,506.3 L36.4,505.9 L36.4,505.7 L36.1,505.6 L35.8,505.6 L35.6,505.6 L34.9,504.9 L35.2,504.2 L35.9,503.5 L36.6,503.0 L39.5,501.7 L39.7,501.6 L39.7,501.5 L39.7,501.4 L40.1,501.4 L40.8,501.2 L41.6,501.0 L41.9,501.0 L42.2,501.1 L42.4,501.2 L42.5,501.2 L42.6,501.3 L43.0,501.4 L43.3,501.4 L43.6,501.3 L43.7,501.2 L43.9,501.0 L44.1,500.9 L44.1,500.7 L44.3,500.4 L44.6,500.1 L45.0,500.2 L45.3,500.0 L45.3,499.7 L45.1,499.5 L44.8,499.3 L44.5,499.2 L43.8,499.1 L43.5,499.0 L42.9,498.6 L42.3,498.1 L41.8,497.5 L41.6,496.9 L41.6,496.4 L41.5,496.3 L41.2,496.1 L41.0,496.1 L40.7,496.0 L40.5,496.0 L40.5,495.9 L40.2,495.7 L38.7,495.1 L38.1,494.7 L38.2,494.2 L37.7,494.0 L37.3,493.6 L37.4,493.3 L38.0,493.1 L37.5,492.7 L37.4,492.5 L37.3,492.2 L37.3,491.6 L37.3,491.5 L37.2,491.2 L37.1,491.0 L36.9,490.5 L36.4,490.2 L35.6,490.2 L34.7,490.4 L33.9,490.8 L33.4,490.9 L32.9,490.7 L32.4,490.2 L32.3,490.1 L32.4,490.0 L32.5,489.9 L32.7,489.9 L34.4,489.2 L34.9,488.9 L35.1,488.2 L35.7,488.4 L36.2,488.3 L36.7,488.1 L37.5,488.0 L37.6,487.8 L37.8,487.7 L38.0,487.5 L38.3,487.5 L38.7,487.5 L39.0,487.4 L39.4,487.7 L39.6,488.1 L39.7,488.4 L39.8,488.6 L40.1,488.7 L40.4,489.4 L40.6,489.6 L40.8,489.7 L41.1,490.0 L41.3,490.1 L41.9,490.1 L42.1,490.1 L42.3,490.2 L42.4,490.5 L42.5,490.9 L42.4,491.7 L42.9,493.5 L43.2,493.8 L44.2,494.4 L44.3,494.5 L44.3,494.6 L44.3,494.8 L44.4,495.0 L44.6,495.1 L44.7,495.1 L44.8,495.1 L47.4,496.2 L47.6,496.4 L47.6,496.6 L47.8,496.7 L48.1,496.9 L48.2,497.0 L48.6,497.0 L48.6,497.1 L48.5,497.2 L48.5,497.3 L48.4,497.4 L48.7,498.0 L48.8,498.7 L48.6,499.0 L47.9,499.4 L47.7,499.7 L48.3,499.4 L48.5,499.6 L48.5,499.9 L48.6,500.1 L49.7,500.2 L50.2,500.4 L50.1,500.8 L50.5,500.8 L50.8,500.9 L51.0,501.1 L51.2,501.3 L51.0,501.5 L51.3,501.6 L52.2,502.2 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M59.7,485.3 L59.4,485.2 L59.2,485.1 L59.0,484.9 L58.9,484.8 L58.9,484.4 L59.3,484.2 L59.9,484.0 L60.4,483.9 L61.0,484.0 L61.6,484.2 L62.1,484.5 L62.3,484.8 L62.1,485.1 L61.7,485.3 L61.1,485.5 L60.6,485.6 L60.3,485.5 L60.0,485.3 L59.7,485.3 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M52.6,479.1 L53.6,479.5 L53.9,480.2 L53.5,480.8 L52.4,480.5 L52.5,480.1 L52.4,479.4 L52.6,479.1 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M27.0,466.9 L27.1,466.9 L27.2,467.0 L27.2,467.1 L27.1,467.2 L26.9,467.1 L26.9,467.0 L26.9,467.0 L27.0,466.9 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M26.9,466.8 L27.1,466.8 L27.0,466.8 L26.9,466.8 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+<path d="M22.2,462.4 L22.3,462.3 L22.5,462.3 L22.5,462.5 L22.3,462.5 L22.2,462.4 Z" fill="#ede0cc" stroke="#9a7a5a" stroke-width="0.8"/>
+
+          </g>
+          <!-- City reference labels -->
+          
+  <text x="286.7" y="155.39" font-size="9" fill="#1e140a" font-weight="800" style="pointer-events:none">Quito ★</text>
+  <text x="237.6" y="380.41" font-size="8" fill="#1e140a" font-weight="600" style="pointer-events:none">Cuenca</text>
+  <text x="149.2" y="321.57" font-size="8" fill="#1e140a" font-weight="600" style="pointer-events:none">Guayaquil</text>
+
+          <!-- Sucursal markers -->
+          <g class="map-marker" data-suc="Azogues" data-terr="CAÑAR" data-count="4" transform="translate(245.3,373.13)">
+    <circle r="11.2" fill="#3b6ea5" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Méndez" data-terr="ORIENTE" data-count="5" transform="translate(299.0,370.53)">
+    <circle r="12.5" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Limón" data-terr="ORIENTE" data-count="3" transform="translate(290.1,393.56)">
+    <circle r="9.9" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Santa Rosa" data-terr="EL_ORO" data-count="2" transform="translate(133.9,432.81)">
+    <circle r="8.6" fill="#8b5fa0" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Suscal" data-terr="CAÑAR" data-count="4" transform="translate(213.2,348.59)">
+    <circle r="11.2" fill="#3b6ea5" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Gualaquiza" data-terr="ORIENTE" data-count="4" transform="translate(273.2,430.21)">
+    <circle r="11.2" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Pasaje" data-terr="EL_ORO" data-count="3" transform="translate(149.5,422.56)">
+    <circle r="9.9" fill="#8b5fa0" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Zaruma" data-terr="EL_ORO" data-count="4" transform="translate(169.0,452.82)">
+    <circle r="11.2" fill="#8b5fa0" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Ponce Enríquez" data-terr="EL_ORO" data-count="1" transform="translate(162.6,396.25)">
+    <circle r="7.3" fill="#8b5fa0" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Macas" data-terr="ORIENTE" data-count="3" transform="translate(318.1,338.17)">
+    <circle r="9.9" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Sucúa" data-terr="ORIENTE" data-count="5" transform="translate(313.1,349.85)">
+    <circle r="12.5" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Machala" data-terr="EL_ORO" data-count="2" transform="translate(133.9,416.84)">
+    <circle r="8.6" fill="#8b5fa0" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="San Fernando" data-terr="AZUAY" data-count="4" transform="translate(203.5,408.77)">
+    <circle r="11.2" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Paute" data-terr="AZUAY" data-count="5" transform="translate(253.8,376.33)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Nabón" data-terr="AZUAY" data-count="3" transform="translate(223.3,426.17)">
+    <circle r="9.9" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Girón" data-terr="AZUAY" data-count="4" transform="translate(215.1,408.69)">
+    <circle r="11.2" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Sigsig" data-terr="AZUAY" data-count="5" transform="translate(252.4,400.28)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Palmas" data-terr="AZUAY" data-count="4" transform="translate(216.0,399.28)">
+    <circle r="11.2" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Chordeleg" data-terr="AZUAY" data-count="5" transform="translate(248.8,388.35)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Cuenca" data-terr="AZUAY" data-count="5" transform="translate(229.6,386.41)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Santa Isabel" data-terr="AZUAY" data-count="5" transform="translate(195.5,417.52)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Pucará" data-terr="AZUAY" data-count="5" transform="translate(191.6,398.43)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Gualaceo" data-terr="AZUAY" data-count="5" transform="translate(252.0,385.66)">
+    <circle r="12.5" fill="#c26830" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Palora" data-terr="ORIENTE" data-count="4" transform="translate(336.0,285.8)">
+    <circle r="11.2" fill="#4a7fa8" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Milagro" data-terr="COSTA" data-count="5" transform="translate(171.3,322.28)">
+    <circle r="12.5" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Santa Elena" data-terr="COSTA" data-count="5" transform="translate(44.1,330.18)">
+    <circle r="12.5" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Guayaquil" data-terr="COSTA" data-count="4" transform="translate(141.2,327.57)">
+    <circle r="11.2" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Naranjal" data-terr="COSTA" data-count="4" transform="translate(168.0,367.92)">
+    <circle r="11.2" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="La Libertad" data-terr="COSTA" data-count="5" transform="translate(39.1,330.43)">
+    <circle r="12.5" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="La Troncal" data-terr="COSTA" data-count="5" transform="translate(196.0,346.49)">
+    <circle r="12.5" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Playas" data-terr="COSTA" data-count="5" transform="translate(90.8,364.39)">
+    <circle r="12.5" fill="#5a8f4e" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Biblián" data-terr="CAÑAR" data-count="5" transform="translate(240.7,371.12)">
+    <circle r="12.5" fill="#3b6ea5" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="El Tambo" data-terr="CAÑAR" data-count="5" transform="translate(233.2,354.14)">
+    <circle r="12.5" fill="#3b6ea5" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Cañar" data-terr="CAÑAR" data-count="5" transform="translate(236.0,358.09)">
+    <circle r="12.5" fill="#3b6ea5" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Loja" data-terr="LOJA" data-count="6" transform="translate(209.7,479.05)">
+    <circle r="13.8" fill="#c49a2a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Quito" data-terr="NORTE" data-count="4" transform="translate(278.7,161.39)">
+    <circle r="11.2" fill="#a03a3a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Saraguro" data-terr="LOJA" data-count="3" transform="translate(206.5,448.03)">
+    <circle r="9.9" fill="#c49a2a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Machachi" data-terr="NORTE" data-count="3" transform="translate(273.0,186.02)">
+    <circle r="9.9" fill="#a03a3a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Oña" data-terr="LOJA" data-count="4" transform="translate(214.9,434.33)">
+    <circle r="11.2" fill="#c49a2a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+<g class="map-marker" data-suc="Catamayo" data-terr="LOJA" data-count="3" transform="translate(194.3,478.12)">
+    <circle r="9.9" fill="#c49a2a" fill-opacity="0.9" stroke="#fff" stroke-width="2"/>
+    <circle r="3" fill="#fff" fill-opacity="0.95"/>
+  </g>
+
+        </svg>
+        <div id="map-tooltip" style="display:none;position:absolute;background:#2c1a0e;color:#f5dfc8;padding:8px 12px;border-radius:8px;font-size:12px;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.35);z-index:10;white-space:nowrap;line-height:1.5"></div>
+      </div>
+      <div style="min-width:185px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Territorios</div>
+        <div class="map-legend"><div class="ml-item"><span style="background:#c26830"></span>AZUAY</div><div class="ml-item"><span style="background:#3b6ea5"></span>CAÑAR</div><div class="ml-item"><span style="background:#5a8f4e"></span>COSTA</div><div class="ml-item"><span style="background:#8b5fa0"></span>EL ORO</div><div class="ml-item"><span style="background:#c49a2a"></span>LOJA</div><div class="ml-item"><span style="background:#a03a3a"></span>NORTE</div><div class="ml-item"><span style="background:#4a7fa8"></span>ORIENTE</div></div>
+        <div style="font-size:10px;color:var(--muted);line-height:1.7;margin-top:4px">
+          ● El tamaño del punto indica el número de personas en esa sucursal.<br>
+          ● Pasa el ratón sobre un punto para ver el detalle.<br>
+          ● Haz clic para ir al perfil completo.
+        </div>
+        <div id="map-info" style="margin-top:6px;padding:10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text2);min-height:90px">
+          <span style="color:var(--muted)">Pasa el ratón sobre un punto para ver el detalle.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Gráfico barras global -->
+    <div class="panel">
+      <h3>Promedio General en Porcentaje — todos los territorios</h3>
+      <div class="leg">
+        <div class="ld"><span style="background:var(--gi-a)"></span>Lóg-Mat · Espacial · Interpersonal · Intrapersonal</div>
+        <div class="ld"><span style="background:var(--gi-b)"></span>Verb-Ling · Musical · Corp-Kinestésica · Naturalista</div>
+      </div>
+      <div class="cw"><canvas id="cg-global"></canvas></div>
+    </div>
+
+    <!-- Radar por territorio -->
+    <div class="slbl" style="margin-top:4px">Perfil de inteligencias por territorio</div>
+    <div class="terr-radars-grid" id="terr-radars-grid"></div>
+
+    <div class="two-col">
+      <div class="panel">
+        <h3>Distribución de niveles — Interpersonal · Intrapersonal · Espacial · Lógico-Matemática</h3>
+        <div class="cw-sm"><canvas id="cg-radar"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Personas por territorio</h3>
+        <div class="cw-sm"><canvas id="cg-terr"></canvas></div>
+      </div>
+    </div>
+
+    <div class="slbl">Seleccione un Territorio para ver detalle</div>
+    <div class="terr-grid" id="terr-cards"></div>
+  </div>
+
+  <!-- ══ TERRITORIO ══ -->
+  <div id="v-terr" class="view">
+    <div class="bc"><span class="bl" onclick="showWelcome()">Inicio</span>›<b id="bc-terr"></b></div>
+    <div class="vh">
+      <div class="vt" id="vt-terr"></div>
+      <div class="vs" id="vs-terr"></div>
+    </div>
+    <!-- Radar inteligencias del territorio + radar niveles -->
+    <div class="two-col">
+      <div class="panel">
+        <h3>Perfil de inteligencias del territorio</h3>
+        <div class="cw-sm"><canvas id="ct-intel-radar"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Distribución de niveles — Interpersonal · Intrapersonal · Espacial · Lógico-Matemática</h3>
+        <div class="cw-sm"><canvas id="ct-radar"></canvas></div>
+      </div>
+    </div>
+    <!-- Barras percentiles -->
+    <div class="panel">
+      <h3>Percentiles promedio por inteligencia</h3>
+      <div class="leg">
+        <div class="ld"><span style="background:var(--gi-a)"></span>Grupo A</div>
+        <div class="ld"><span style="background:var(--gi-b)"></span>Grupo B</div>
+      </div>
+      <div class="cw-sm"><canvas id="ct-bar"></canvas></div>
+    </div>
+    <div class="slbl">Sucursales</div>
+    <div class="cards-row" id="suc-cards"></div>
+    <div class="panel">
+      <h3>Todas las personas del territorio</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Nombre</th><th>Sucursal</th>
+          <th title="Verbal-Lingüística">VL</th><th title="Lógico-Matemática">LM</th>
+          <th title="Musical">M</th><th title="Espacial">E</th>
+          <th title="Corporal-Kinestésica">CK</th><th title="Interpersonal">Inter</th>
+          <th title="Intrapersonal">Intra</th><th title="Naturalista">N</th>
+        </tr></thead>
+        <tbody id="tb-terr"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ══ SUCURSAL ══ -->
+  <div id="v-suc" class="view">
+    <div class="bc">
+      <span class="bl" onclick="showWelcome()">Inicio</span>›
+      <span class="bl" id="bc-st"></span>›
+      <b id="bc-suc"></b>
+    </div>
+    <div class="vh">
+      <div class="vt" id="vt-suc"></div>
+      <div class="vs" id="vs-suc"></div>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <h3>Perfil de inteligencias — sucursal</h3>
+        <div class="cw-sm"><canvas id="cs-intel-radar"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Distribución de niveles — Interpersonal · Intrapersonal · Espacial · Lógico-Matemática</h3>
+        <div class="cw-sm"><canvas id="cs-radar"></canvas></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Percentiles promedio por inteligencia</h3>
+      <div class="leg">
+        <div class="ld"><span style="background:var(--gi-a)"></span>Grupo A</div>
+        <div class="ld"><span style="background:var(--gi-b)"></span>Grupo B</div>
+      </div>
+      <div class="cw-sm"><canvas id="cs-bar"></canvas></div>
+    </div>
+    <div class="slbl">Personas</div>
+    <div class="cards-row" id="pers-cards"></div>
+    <div class="two-col">
+      <div class="panel">
+        <h3>Distribución de puntajes por inteligencia</h3>
+        <div class="cw-md"><canvas id="cs-persons"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Total de puntajes — distribución porcentual</h3>
+        <div class="cw-md"><canvas id="cs-pie"></canvas></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Detalle de personas</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr>
+          <th>Nombre</th>
+          <th title="Verbal-Lingüística">VL</th><th title="Lógico-Matemática">LM</th>
+          <th title="Musical">M</th><th title="Espacial">E</th>
+          <th title="Corporal-Kinestésica">CK</th><th title="Interpersonal">Inter</th>
+          <th title="Intrapersonal">Intra</th><th title="Naturalista">N</th>
+        </tr></thead>
+        <tbody id="tb-suc"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ══ PERSONA ══ -->
+  <div id="v-pers" class="view">
+    <div class="bc">
+      <span class="bl" onclick="showWelcome()">Inicio</span>›
+      <span class="bl" id="bc-pt"></span>›
+      <span class="bl" id="bc-ps"></span>›
+      <b id="bc-p"></b>
+    </div>
+    <div class="p-head">
+      <div class="p-name" id="p-name"></div>
+      <div class="p-meta" id="p-meta"></div>
+    </div>
+    <div class="three-col">
+      <div class="panel">
+        <h3>Perfil de inteligencias</h3>
+        <div class="cw-sm"><canvas id="cp-radar"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Puntaje bruto /27</h3>
+        <div class="leg">
+          <div class="ld"><span style="background:var(--gi-a)"></span>Grupo A</div>
+          <div class="ld"><span style="background:var(--gi-b)"></span>Grupo B</div>
+        </div>
+        <div class="cw-sm"><canvas id="cp-bar"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Percentiles por dimensión</h3>
+        <div id="p-bars" style="padding-top:4px"></div>
+      </div>
+    </div>
+    <div class="slbl">Resultados detallados</div>
+    <div class="intel-grid" id="intel-grid"></div>
+  </div>
+
+</div>
+
+<script>
+let DATA = [{"nombre": "Francisco Javier Guaman Castro", "territorio": "CAÑAR", "sucursal": "Azogues", "edad": "38", "vl": 19, "lm": 21, "m": 15, "e": 24, "ck": 22, "inter": 22, "intra": 23, "n": 17, "pc_vl": 70, "pc_lm": 80, "pc_m": 50, "pc_e": 95, "pc_ck": 83, "pc_inter": 83, "pc_intra": 85, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Maria Barvarita Lozado Macancela", "territorio": "CAÑAR", "sucursal": "Azogues", "edad": "53", "vl": 24, "lm": 26, "m": 27, "e": 26, "ck": 26, "inter": 27, "intra": 26, "n": 26, "pc_vl": 90, "pc_lm": 97, "pc_m": 99, "pc_e": 97, "pc_ck": 97, "pc_inter": 99, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Enma Yolanda Palomeque Castro", "territorio": "CAÑAR", "sucursal": "Azogues", "edad": "67", "vl": 25, "lm": 27, "m": 21, "e": 25, "ck": 27, "inter": 27, "intra": 27, "n": 25, "pc_vl": 95, "pc_lm": 99, "pc_m": 80, "pc_e": 97, "pc_ck": 99, "pc_inter": 99, "pc_intra": 99, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Carlos Antonio Avila Maza", "territorio": "CAÑAR", "sucursal": "Azogues", "edad": "35", "vl": 25, "lm": 23, "m": 27, "e": 27, "ck": 26, "inter": 26, "intra": 25, "n": 26, "pc_vl": 95, "pc_lm": 85, "pc_m": 99, "pc_e": 99, "pc_ck": 97, "pc_inter": 97, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Clever Bolivar Heredia Urgiles", "territorio": "ORIENTE", "sucursal": "Méndez", "edad": "67", "vl": 21, "lm": 20, "m": 14, "e": 23, "ck": 19, "inter": 24, "intra": 26, "n": 25, "pc_vl": 80, "pc_lm": 75, "pc_m": 45, "pc_e": 85, "pc_ck": 70, "pc_inter": 95, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Angélica Janet Torres García", "territorio": "ORIENTE", "sucursal": "Méndez", "edad": "59", "vl": 7, "lm": 13, "m": 2, "e": 10, "ck": 20, "inter": 20, "intra": 21, "n": 21, "pc_vl": 15, "pc_lm": 40, "pc_m": 3, "pc_e": 25, "pc_ck": 75, "pc_inter": 75, "pc_intra": 80, "pc_n": 80, "nv_vl": "Bajo", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Maria Clara Alvear Alvear", "territorio": "ORIENTE", "sucursal": "Méndez", "edad": "57", "vl": 7, "lm": 2, "m": 1, "e": 4, "ck": 11, "inter": 13, "intra": 16, "n": 19, "pc_vl": 15, "pc_lm": 3, "pc_m": 1, "pc_e": 7, "pc_ck": 30, "pc_inter": 40, "pc_intra": 55, "pc_n": 70, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Catherin Gabriela Oleas Guzmán", "territorio": "ORIENTE", "sucursal": "Limón", "edad": "36", "vl": 24, "lm": 15, "m": 21, "e": 16, "ck": 19, "inter": 23, "intra": 24, "n": 21, "pc_vl": 90, "pc_lm": 50, "pc_m": 80, "pc_e": 55, "pc_ck": 70, "pc_inter": 85, "pc_intra": 95, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Jessica Del Cisne Rodriguez Chamba", "territorio": "EL_ORO", "sucursal": "Santa Rosa", "edad": "40", "vl": 13, "lm": 8, "m": 5, "e": 10, "ck": 8, "inter": 19, "intra": 18, "n": 18, "pc_vl": 40, "pc_lm": 18, "pc_m": 10, "pc_e": 25, "pc_ck": 18, "pc_inter": 70, "pc_intra": 65, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Marjorie Aracely Peláez Alvear", "territorio": "EL_ORO", "sucursal": "Santa Rosa", "edad": "51", "vl": 20, "lm": 19, "m": 21, "e": 12, "ck": 16, "inter": 25, "intra": 18, "n": 9, "pc_vl": 75, "pc_lm": 70, "pc_m": 80, "pc_e": 35, "pc_ck": 55, "pc_inter": 97, "pc_intra": 65, "pc_n": 20, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Bajo"}, {"nombre": "Dany Javier Dutan Piña", "territorio": "CAÑAR", "sucursal": "Suscal", "edad": "42", "vl": 23, "lm": 17, "m": 27, "e": 22, "ck": 23, "inter": 27, "intra": 24, "n": 27, "pc_vl": 85, "pc_lm": 60, "pc_m": 99, "pc_e": 83, "pc_ck": 85, "pc_inter": 99, "pc_intra": 95, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Beatriz Guaman", "territorio": "CAÑAR", "sucursal": "Suscal", "edad": "33", "vl": 21, "lm": 18, "m": 21, "e": 19, "ck": 21, "inter": 20, "intra": 19, "n": 19, "pc_vl": 80, "pc_lm": 65, "pc_m": 80, "pc_e": 70, "pc_ck": 80, "pc_inter": 75, "pc_intra": 70, "pc_n": 70, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Luis Vicente Bustamante Loja", "territorio": "CAÑAR", "sucursal": "Suscal", "edad": "68", "vl": 26, "lm": 25, "m": 21, "e": 25, "ck": 26, "inter": 27, "intra": 26, "n": 24, "pc_vl": 97, "pc_lm": 97, "pc_m": 80, "pc_e": 97, "pc_ck": 97, "pc_inter": 99, "pc_intra": 97, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ines Magdalena Guaman Pizha", "territorio": "CAÑAR", "sucursal": "Suscal", "edad": "34", "vl": 7, "lm": 4, "m": 2, "e": 7, "ck": 8, "inter": 10, "intra": 12, "n": 11, "pc_vl": 15, "pc_lm": 7, "pc_m": 3, "pc_e": 15, "pc_ck": 18, "pc_inter": 25, "pc_intra": 35, "pc_n": 30, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Bajo", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Carlos Emmanuel Choco Salinas", "territorio": "ORIENTE", "sucursal": "Gualaquiza", "edad": "26", "vl": 26, "lm": 26, "m": 17, "e": 21, "ck": 20, "inter": 23, "intra": 27, "n": 27, "pc_vl": 97, "pc_lm": 97, "pc_m": 60, "pc_e": 80, "pc_ck": 75, "pc_inter": 85, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Chitup Edison Unkuch Saant", "territorio": "ORIENTE", "sucursal": "Gualaquiza", "edad": "31", "vl": 20, "lm": 18, "m": 18, "e": 18, "ck": 18, "inter": 20, "intra": 20, "n": 19, "pc_vl": 75, "pc_lm": 65, "pc_m": 65, "pc_e": 65, "pc_ck": 65, "pc_inter": 75, "pc_intra": 75, "pc_n": 70, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Eliana Uyaguari", "territorio": "ORIENTE", "sucursal": "Gualaquiza", "edad": "41", "vl": 10, "lm": 10, "m": 2, "e": 9, "ck": 2, "inter": 10, "intra": 14, "n": 11, "pc_vl": 25, "pc_lm": 25, "pc_m": 3, "pc_e": 20, "pc_ck": 3, "pc_inter": 25, "pc_intra": 45, "pc_n": 30, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Bajo", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Carla Nohelia Noriega Sanchez", "territorio": "ORIENTE", "sucursal": "Gualaquiza", "edad": "34", "vl": 17, "lm": 17, "m": 15, "e": 16, "ck": 18, "inter": 20, "intra": 19, "n": 19, "pc_vl": 60, "pc_lm": 60, "pc_m": 50, "pc_e": 55, "pc_ck": 65, "pc_inter": 75, "pc_intra": 70, "pc_n": 70, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Marlon Francisco Cedillo Alvarado", "territorio": "EL_ORO", "sucursal": "Pasaje", "edad": "47", "vl": 21, "lm": 13, "m": 19, "e": 14, "ck": 24, "inter": 25, "intra": 24, "n": 22, "pc_vl": 80, "pc_lm": 40, "pc_m": 70, "pc_e": 45, "pc_ck": 95, "pc_inter": 97, "pc_intra": 95, "pc_n": 83, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Alba Leovina Ordoñez Tinoco", "territorio": "EL_ORO", "sucursal": "Zaruma", "edad": "56", "vl": 9, "lm": 3, "m": 4, "e": 6, "ck": 5, "inter": 16, "intra": 20, "n": 13, "pc_vl": 20, "pc_lm": 5, "pc_m": 7, "pc_e": 12, "pc_ck": 10, "pc_inter": 55, "pc_intra": 75, "pc_n": 40, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Stalin Fabian Carpio Cueva", "territorio": "EL_ORO", "sucursal": "Ponce Enríquez", "edad": "25", "vl": 19, "lm": 18, "m": 14, "e": 20, "ck": 23, "inter": 21, "intra": 20, "n": 22, "pc_vl": 70, "pc_lm": 65, "pc_m": 45, "pc_e": 75, "pc_ck": 85, "pc_inter": 80, "pc_intra": 75, "pc_n": 83, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Carla Marilu Kasent Namaj", "territorio": "ORIENTE", "sucursal": "Macas", "edad": "33", "vl": 14, "lm": 11, "m": 7, "e": 11, "ck": 14, "inter": 20, "intra": 17, "n": 22, "pc_vl": 45, "pc_lm": 30, "pc_m": 15, "pc_e": 30, "pc_ck": 45, "pc_inter": 75, "pc_intra": 60, "pc_n": 83, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Prissila Marilu Gomez Maldonado", "territorio": "ORIENTE", "sucursal": "Macas", "edad": "35", "vl": 15, "lm": 14, "m": 9, "e": 8, "ck": 18, "inter": 25, "intra": 18, "n": 18, "pc_vl": 50, "pc_lm": 45, "pc_m": 20, "pc_e": 18, "pc_ck": 65, "pc_inter": 97, "pc_intra": 65, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Samaniego Chacha Ana Patricia", "territorio": "ORIENTE", "sucursal": "Macas", "edad": "42", "vl": 18, "lm": 18, "m": 7, "e": 11, "ck": 7, "inter": 26, "intra": 22, "n": 12, "pc_vl": 65, "pc_lm": 65, "pc_m": 15, "pc_e": 30, "pc_ck": 15, "pc_inter": 97, "pc_intra": 83, "pc_n": 35, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Catelin Margoth Jara Tapia", "territorio": "ORIENTE", "sucursal": "Sucúa", "edad": "38", "vl": 16, "lm": 12, "m": 11, "e": 13, "ck": 13, "inter": 25, "intra": 21, "n": 26, "pc_vl": 55, "pc_lm": 35, "pc_m": 30, "pc_e": 40, "pc_ck": 40, "pc_inter": 97, "pc_intra": 80, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Silvana Del Rocio Pasuña Dalfo", "territorio": "ORIENTE", "sucursal": "Sucúa", "edad": "59", "vl": 18, "lm": 18, "m": 16, "e": 18, "ck": 14, "inter": 22, "intra": 23, "n": 20, "pc_vl": 65, "pc_lm": 65, "pc_m": 55, "pc_e": 65, "pc_ck": 45, "pc_inter": 83, "pc_intra": 85, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Abel Elias Lopez Lopez", "territorio": "ORIENTE", "sucursal": "Sucúa", "edad": "54", "vl": 11, "lm": 13, "m": 2, "e": 6, "ck": 19, "inter": 13, "intra": 20, "n": 17, "pc_vl": 30, "pc_lm": 40, "pc_m": 3, "pc_e": 12, "pc_ck": 70, "pc_inter": 40, "pc_intra": 75, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Carin Marlene Orellana Calderon", "territorio": "ORIENTE", "sucursal": "Sucúa", "edad": "50", "vl": 9, "lm": 4, "m": 5, "e": 4, "ck": 10, "inter": 12, "intra": 13, "n": 14, "pc_vl": 20, "pc_lm": 7, "pc_m": 10, "pc_e": 7, "pc_ck": 25, "pc_inter": 35, "pc_intra": 40, "pc_n": 45, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Jesús Tancredo Arévalo Peláez", "territorio": "ORIENTE", "sucursal": "Sucúa", "edad": "64", "vl": 23, "lm": 25, "m": 12, "e": 16, "ck": 19, "inter": 21, "intra": 25, "n": 26, "pc_vl": 85, "pc_lm": 97, "pc_m": 35, "pc_e": 55, "pc_ck": 70, "pc_inter": 80, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Freddy Marcel Cabrera Lituma", "territorio": "ORIENTE", "sucursal": "Limón", "edad": "37", "vl": 21, "lm": 24, "m": 18, "e": 15, "ck": 17, "inter": 23, "intra": 20, "n": 15, "pc_vl": 80, "pc_lm": 95, "pc_m": 65, "pc_e": 50, "pc_ck": 60, "pc_inter": 85, "pc_intra": 75, "pc_n": 50, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Luis Godoy", "territorio": "EL_ORO", "sucursal": "Machala", "edad": "40", "vl": 18, "lm": 18, "m": 18, "e": 18, "ck": 18, "inter": 18, "intra": 18, "n": 18, "pc_vl": 65, "pc_lm": 65, "pc_m": 65, "pc_e": 65, "pc_ck": 65, "pc_inter": 65, "pc_intra": 65, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Georja Enith Bravo Oviedo", "territorio": "EL_ORO", "sucursal": "Machala", "edad": "54", "vl": 13, "lm": 7, "m": 7, "e": 9, "ck": 7, "inter": 14, "intra": 15, "n": 11, "pc_vl": 40, "pc_lm": 15, "pc_m": 15, "pc_e": 20, "pc_ck": 15, "pc_inter": 45, "pc_intra": 50, "pc_n": 30, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Esperanza Bermero", "territorio": "EL_ORO", "sucursal": "Pasaje", "edad": "28", "vl": 18, "lm": 12, "m": 10, "e": 13, "ck": 12, "inter": 17, "intra": 17, "n": 17, "pc_vl": 65, "pc_lm": 35, "pc_m": 25, "pc_e": 40, "pc_ck": 35, "pc_inter": 60, "pc_intra": 60, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Janet Esperanza Bermeo Belduma", "territorio": "EL_ORO", "sucursal": "Pasaje", "edad": "28", "vl": 22, "lm": 19, "m": 23, "e": 23, "ck": 23, "inter": 22, "intra": 23, "n": 22, "pc_vl": 83, "pc_lm": 70, "pc_m": 85, "pc_e": 85, "pc_ck": 85, "pc_inter": 83, "pc_intra": 85, "pc_n": 83, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Norma Graciela Dutasaca Roche", "territorio": "AZUAY", "sucursal": "San Fernando", "edad": "42", "vl": 18, "lm": 10, "m": 14, "e": 15, "ck": 21, "inter": 26, "intra": 22, "n": 14, "pc_vl": 65, "pc_lm": 25, "pc_m": 45, "pc_e": 50, "pc_ck": 80, "pc_inter": 97, "pc_intra": 83, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Juan Diego Medina Condo", "territorio": "AZUAY", "sucursal": "Paute", "edad": "35", "vl": 18, "lm": 27, "m": 15, "e": 21, "ck": 23, "inter": 24, "intra": 24, "n": 18, "pc_vl": 65, "pc_lm": 99, "pc_m": 50, "pc_e": 80, "pc_ck": 85, "pc_inter": 95, "pc_intra": 95, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Jessica Alexandra Ramon Jaya", "territorio": "AZUAY", "sucursal": "Nabón", "edad": "24", "vl": 14, "lm": 15, "m": 8, "e": 9, "ck": 10, "inter": 24, "intra": 19, "n": 21, "pc_vl": 45, "pc_lm": 50, "pc_m": 18, "pc_e": 20, "pc_ck": 25, "pc_inter": 95, "pc_intra": 70, "pc_n": 80, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Rosa Amelia Quirindumbay Márquez", "territorio": "AZUAY", "sucursal": "Girón", "edad": "45", "vl": 19, "lm": 14, "m": 13, "e": 12, "ck": 20, "inter": 22, "intra": 21, "n": 24, "pc_vl": 70, "pc_lm": 45, "pc_m": 40, "pc_e": 35, "pc_ck": 75, "pc_inter": 83, "pc_intra": 80, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Tobias Armando León Arcentález", "territorio": "AZUAY", "sucursal": "Sigsig", "edad": "62", "vl": 21, "lm": 22, "m": 8, "e": 11, "ck": 25, "inter": 23, "intra": 23, "n": 22, "pc_vl": 80, "pc_lm": 83, "pc_m": 18, "pc_e": 30, "pc_ck": 97, "pc_inter": 85, "pc_intra": 85, "pc_n": 83, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "David Santiago Palacios Guzmán", "territorio": "AZUAY", "sucursal": "Girón", "edad": "40", "vl": 7, "lm": 9, "m": 12, "e": 7, "ck": 11, "inter": 18, "intra": 20, "n": 10, "pc_vl": 15, "pc_lm": 20, "pc_m": 35, "pc_e": 15, "pc_ck": 30, "pc_inter": 65, "pc_intra": 75, "pc_n": 25, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Bajo"}, {"nombre": "Christian Rodolfo Morocho Plasencia", "territorio": "AZUAY", "sucursal": "Sigsig", "edad": "28", "vl": 17, "lm": 20, "m": 3, "e": 17, "ck": 23, "inter": 25, "intra": 20, "n": 25, "pc_vl": 60, "pc_lm": 75, "pc_m": 5, "pc_e": 60, "pc_ck": 85, "pc_inter": 97, "pc_intra": 75, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ana Lucia Espinoza Chillogallo", "territorio": "AZUAY", "sucursal": "San Fernando", "edad": "36", "vl": 15, "lm": 16, "m": 18, "e": 14, "ck": 22, "inter": 23, "intra": 23, "n": 14, "pc_vl": 50, "pc_lm": 55, "pc_m": 65, "pc_e": 45, "pc_ck": 83, "pc_inter": 85, "pc_intra": 85, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Silvana Carolina Rivas Macero", "territorio": "AZUAY", "sucursal": "Palmas", "edad": "36", "vl": 19, "lm": 18, "m": 15, "e": 16, "ck": 21, "inter": 22, "intra": 22, "n": 24, "pc_vl": 70, "pc_lm": 65, "pc_m": 50, "pc_e": 55, "pc_ck": 80, "pc_inter": 83, "pc_intra": 83, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Hernan Bernardo Salinas Vasquez", "territorio": "AZUAY", "sucursal": "Chordeleg", "edad": "49", "vl": 5, "lm": 10, "m": 4, "e": 10, "ck": 8, "inter": 11, "intra": 14, "n": 9, "pc_vl": 10, "pc_lm": 25, "pc_m": 7, "pc_e": 25, "pc_ck": 18, "pc_inter": 30, "pc_intra": 45, "pc_n": 20, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Bajo"}, {"nombre": "Jose Arnaldo Sánchez Ojeda", "territorio": "EL_ORO", "sucursal": "Zaruma", "edad": "77", "vl": 21, "lm": 19, "m": 12, "e": 11, "ck": 23, "inter": 27, "intra": 23, "n": 22, "pc_vl": 80, "pc_lm": 70, "pc_m": 35, "pc_e": 30, "pc_ck": 85, "pc_inter": 99, "pc_intra": 85, "pc_n": 83, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Carlos Humberto Cardenas Cardenas", "territorio": "AZUAY", "sucursal": "Palmas", "edad": "36", "vl": 22, "lm": 21, "m": 17, "e": 18, "ck": 24, "inter": 27, "intra": 25, "n": 25, "pc_vl": 83, "pc_lm": 80, "pc_m": 60, "pc_e": 65, "pc_ck": 95, "pc_inter": 99, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Maria Fernanda Yunga Enderica", "territorio": "AZUAY", "sucursal": "Cuenca", "edad": "35", "vl": 14, "lm": 15, "m": 9, "e": 15, "ck": 13, "inter": 23, "intra": 20, "n": 18, "pc_vl": 45, "pc_lm": 50, "pc_m": 20, "pc_e": 50, "pc_ck": 40, "pc_inter": 85, "pc_intra": 75, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Gabriela Yamilé Moscoso Román", "territorio": "AZUAY", "sucursal": "Sigsig", "edad": "28", "vl": 20, "lm": 5, "m": 7, "e": 3, "ck": 12, "inter": 15, "intra": 18, "n": 15, "pc_vl": 75, "pc_lm": 10, "pc_m": 15, "pc_e": 5, "pc_ck": 35, "pc_inter": 50, "pc_intra": 65, "pc_n": 50, "nv_vl": "Alto", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Gabriela Michelle Palacios Torres", "territorio": "AZUAY", "sucursal": "Santa Isabel", "edad": "33", "vl": 13, "lm": 8, "m": 13, "e": 12, "ck": 18, "inter": 22, "intra": 23, "n": 24, "pc_vl": 40, "pc_lm": 18, "pc_m": 40, "pc_e": 35, "pc_ck": 65, "pc_inter": 83, "pc_intra": 85, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Nancy Piedad Barzallo Huanga", "territorio": "AZUAY", "sucursal": "Pucará", "edad": "37", "vl": 11, "lm": 6, "m": 5, "e": 11, "ck": 9, "inter": 16, "intra": 16, "n": 16, "pc_vl": 30, "pc_lm": 12, "pc_m": 10, "pc_e": 30, "pc_ck": 20, "pc_inter": 55, "pc_intra": 55, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Verónica Estefanía Vázquez Molina", "territorio": "AZUAY", "sucursal": "Gualaceo", "edad": "35", "vl": 20, "lm": 17, "m": 5, "e": 17, "ck": 20, "inter": 26, "intra": 20, "n": 17, "pc_vl": 75, "pc_lm": 60, "pc_m": 10, "pc_e": 60, "pc_ck": 75, "pc_inter": 97, "pc_intra": 75, "pc_n": 60, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Gabriela Viviana Sanango Rodríguez", "territorio": "AZUAY", "sucursal": "Chordeleg", "edad": "26", "vl": 14, "lm": 12, "m": 9, "e": 11, "ck": 12, "inter": 18, "intra": 17, "n": 16, "pc_vl": 45, "pc_lm": 35, "pc_m": 20, "pc_e": 30, "pc_ck": 35, "pc_inter": 65, "pc_intra": 60, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Andres Arias", "territorio": "AZUAY", "sucursal": "Cuenca", "edad": "40", "vl": 11, "lm": 18, "m": 2, "e": 9, "ck": 19, "inter": 17, "intra": 17, "n": 11, "pc_vl": 30, "pc_lm": 65, "pc_m": 3, "pc_e": 20, "pc_ck": 70, "pc_inter": 60, "pc_intra": 60, "pc_n": 30, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Juan Leonardo López", "territorio": "AZUAY", "sucursal": "Palmas", "edad": "63", "vl": 23, "lm": 16, "m": 16, "e": 17, "ck": 19, "inter": 27, "intra": 27, "n": 24, "pc_vl": 85, "pc_lm": 55, "pc_m": 55, "pc_e": 60, "pc_ck": 70, "pc_inter": 99, "pc_intra": 99, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "María Verónica Zenteno Samaniego", "territorio": "AZUAY", "sucursal": "Cuenca", "edad": "37", "vl": 23, "lm": 22, "m": 21, "e": 16, "ck": 24, "inter": 27, "intra": 27, "n": 27, "pc_vl": 85, "pc_lm": 83, "pc_m": 80, "pc_e": 55, "pc_ck": 95, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Daisy Jackeline Guzmán Días", "territorio": "AZUAY", "sucursal": "Chordeleg", "edad": "27", "vl": 23, "lm": 22, "m": 20, "e": 16, "ck": 24, "inter": 25, "intra": 23, "n": 26, "pc_vl": 85, "pc_lm": 83, "pc_m": 75, "pc_e": 55, "pc_ck": 95, "pc_inter": 97, "pc_intra": 85, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Stefania Elizabeth Contreras Cabrera", "territorio": "AZUAY", "sucursal": "Santa Isabel", "edad": "31", "vl": 17, "lm": 16, "m": 12, "e": 15, "ck": 15, "inter": 19, "intra": 16, "n": 20, "pc_vl": 60, "pc_lm": 55, "pc_m": 35, "pc_e": 50, "pc_ck": 50, "pc_inter": 70, "pc_intra": 55, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Nancy Patricia Riera Cabrera", "territorio": "AZUAY", "sucursal": "Palmas", "edad": "33", "vl": 24, "lm": 22, "m": 16, "e": 21, "ck": 23, "inter": 26, "intra": 20, "n": 26, "pc_vl": 90, "pc_lm": 83, "pc_m": 55, "pc_e": 80, "pc_ck": 85, "pc_inter": 97, "pc_intra": 75, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Juan Sebastián Machado Tapia", "territorio": "AZUAY", "sucursal": "Cuenca", "edad": "32", "vl": 18, "lm": 5, "m": 12, "e": 9, "ck": 15, "inter": 23, "intra": 23, "n": 20, "pc_vl": 65, "pc_lm": 10, "pc_m": 35, "pc_e": 20, "pc_ck": 50, "pc_inter": 85, "pc_intra": 85, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Rosario Maricela Cordova Márquez", "territorio": "AZUAY", "sucursal": "Pucará", "edad": "30", "vl": 27, "lm": 26, "m": 27, "e": 25, "ck": 25, "inter": 26, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 97, "pc_m": 99, "pc_e": 97, "pc_ck": 97, "pc_inter": 97, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Juan Manuel Picon Piña", "territorio": "AZUAY", "sucursal": "Chordeleg", "edad": "64", "vl": 15, "lm": 17, "m": 8, "e": 20, "ck": 9, "inter": 21, "intra": 21, "n": 17, "pc_vl": 50, "pc_lm": 60, "pc_m": 18, "pc_e": 75, "pc_ck": 20, "pc_inter": 80, "pc_intra": 80, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Alto", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "María Elena Bermeo Guamán", "territorio": "AZUAY", "sucursal": "Santa Isabel", "edad": "42", "vl": 17, "lm": 11, "m": 16, "e": 12, "ck": 11, "inter": 15, "intra": 14, "n": 13, "pc_vl": 60, "pc_lm": 30, "pc_m": 55, "pc_e": 35, "pc_ck": 30, "pc_inter": 50, "pc_intra": 45, "pc_n": 40, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Jorge Mauricio Criollo Lopez", "territorio": "AZUAY", "sucursal": "Gualaceo", "edad": "40", "vl": 19, "lm": 13, "m": 16, "e": 26, "ck": 18, "inter": 21, "intra": 22, "n": 25, "pc_vl": 70, "pc_lm": 40, "pc_m": 55, "pc_e": 97, "pc_ck": 65, "pc_inter": 80, "pc_intra": 83, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Monica Katherine Pesantez Garcia", "territorio": "AZUAY", "sucursal": "Cuenca", "edad": "36", "vl": 14, "lm": 11, "m": 15, "e": 9, "ck": 13, "inter": 20, "intra": 22, "n": 16, "pc_vl": 45, "pc_lm": 30, "pc_m": 50, "pc_e": 20, "pc_ck": 40, "pc_inter": 75, "pc_intra": 83, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Marlene Mariana  Urgiles Urgilez", "territorio": "AZUAY", "sucursal": "Sigsig", "edad": "34", "vl": 12, "lm": 11, "m": 10, "e": 10, "ck": 12, "inter": 15, "intra": 16, "n": 12, "pc_vl": 35, "pc_lm": 30, "pc_m": 25, "pc_e": 25, "pc_ck": 35, "pc_inter": 50, "pc_intra": 55, "pc_n": 35, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Diego Marin", "territorio": "AZUAY", "sucursal": "Chordeleg", "edad": "52", "vl": 13, "lm": 8, "m": 4, "e": 17, "ck": 15, "inter": 19, "intra": 19, "n": 16, "pc_vl": 40, "pc_lm": 18, "pc_m": 7, "pc_e": 60, "pc_ck": 50, "pc_inter": 70, "pc_intra": 70, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Hernan Patricio Coronel Calderon", "territorio": "AZUAY", "sucursal": "Paute", "edad": "52", "vl": 15, "lm": 16, "m": 9, "e": 19, "ck": 10, "inter": 24, "intra": 23, "n": 17, "pc_vl": 50, "pc_lm": 55, "pc_m": 20, "pc_e": 70, "pc_ck": 25, "pc_inter": 95, "pc_intra": 85, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Pedro Gustavo Guallpa Pasato", "territorio": "AZUAY", "sucursal": "San Fernando", "edad": "56", "vl": 23, "lm": 23, "m": 18, "e": 25, "ck": 25, "inter": 22, "intra": 25, "n": 27, "pc_vl": 85, "pc_lm": 85, "pc_m": 65, "pc_e": 97, "pc_ck": 97, "pc_inter": 83, "pc_intra": 97, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Galo Andres Plaza Tintin", "territorio": "AZUAY", "sucursal": "Girón", "edad": "36", "vl": 24, "lm": 15, "m": 19, "e": 18, "ck": 24, "inter": 25, "intra": 26, "n": 22, "pc_vl": 90, "pc_lm": 50, "pc_m": 70, "pc_e": 65, "pc_ck": 95, "pc_inter": 97, "pc_intra": 97, "pc_n": 83, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Byron Lalvay", "territorio": "AZUAY", "sucursal": "Santa Isabel", "edad": "30", "vl": 15, "lm": 16, "m": 11, "e": 15, "ck": 12, "inter": 11, "intra": 14, "n": 17, "pc_vl": 50, "pc_lm": 55, "pc_m": 30, "pc_e": 50, "pc_ck": 35, "pc_inter": 30, "pc_intra": 45, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Cecilia Carolina Ulloa Guillen", "territorio": "AZUAY", "sucursal": "Gualaceo", "edad": "61", "vl": 27, "lm": 21, "m": 20, "e": 22, "ck": 21, "inter": 20, "intra": 20, "n": 27, "pc_vl": 99, "pc_lm": 80, "pc_m": 75, "pc_e": 83, "pc_ck": 80, "pc_inter": 75, "pc_intra": 75, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Sandra Maribel Fajardo Salinas", "territorio": "AZUAY", "sucursal": "Sigsig", "edad": "32", "vl": 17, "lm": 17, "m": 12, "e": 16, "ck": 18, "inter": 22, "intra": 20, "n": 14, "pc_vl": 60, "pc_lm": 60, "pc_m": 35, "pc_e": 55, "pc_ck": 65, "pc_inter": 83, "pc_intra": 75, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Sonia Beatriz Alvarado Zhirzhan", "territorio": "AZUAY", "sucursal": "Paute", "edad": "46", "vl": 20, "lm": 7, "m": 17, "e": 16, "ck": 15, "inter": 24, "intra": 23, "n": 20, "pc_vl": 75, "pc_lm": 15, "pc_m": 60, "pc_e": 55, "pc_ck": 50, "pc_inter": 95, "pc_intra": 85, "pc_n": 75, "nv_vl": "Alto", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Manuel Reinaldo Tapia Barrera", "territorio": "AZUAY", "sucursal": "Paute", "edad": "61", "vl": 17, "lm": 13, "m": 9, "e": 12, "ck": 17, "inter": 21, "intra": 18, "n": 22, "pc_vl": 60, "pc_lm": 40, "pc_m": 20, "pc_e": 35, "pc_ck": 60, "pc_inter": 80, "pc_intra": 65, "pc_n": 83, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Christian Freddy Guaman Campoverde", "territorio": "AZUAY", "sucursal": "Santa Isabel", "edad": "28", "vl": 13, "lm": 17, "m": 10, "e": 20, "ck": 23, "inter": 27, "intra": 27, "n": 27, "pc_vl": 40, "pc_lm": 60, "pc_m": 25, "pc_e": 75, "pc_ck": 85, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ninfa Patricia Sarmiento Bermeo", "territorio": "AZUAY", "sucursal": "Paute", "edad": "44", "vl": 18, "lm": 19, "m": 6, "e": 18, "ck": 19, "inter": 24, "intra": 23, "n": 24, "pc_vl": 65, "pc_lm": 70, "pc_m": 12, "pc_e": 65, "pc_ck": 70, "pc_inter": 95, "pc_intra": 85, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Luis Gonzalo Zhispón Bueno", "territorio": "AZUAY", "sucursal": "Gualaceo", "edad": "61", "vl": 16, "lm": 21, "m": 9, "e": 25, "ck": 27, "inter": 24, "intra": 19, "n": 27, "pc_vl": 55, "pc_lm": 80, "pc_m": 20, "pc_e": 97, "pc_ck": 99, "pc_inter": 95, "pc_intra": 70, "pc_n": 99, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Elza Maria Rosillo Torres", "territorio": "ORIENTE", "sucursal": "Palora", "edad": "34", "vl": 19, "lm": 17, "m": 12, "e": 17, "ck": 17, "inter": 19, "intra": 18, "n": 20, "pc_vl": 70, "pc_lm": 60, "pc_m": 35, "pc_e": 60, "pc_ck": 60, "pc_inter": 70, "pc_intra": 65, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Jenifer Yajaira Velin Sandoval", "territorio": "ORIENTE", "sucursal": "Palora", "edad": "36", "vl": 18, "lm": 19, "m": 8, "e": 10, "ck": 17, "inter": 22, "intra": 24, "n": 17, "pc_vl": 65, "pc_lm": 70, "pc_m": 18, "pc_e": 25, "pc_ck": 60, "pc_inter": 83, "pc_intra": 95, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Omar Agusberto Rojas Rojas", "territorio": "ORIENTE", "sucursal": "Palora", "edad": "41", "vl": 12, "lm": 13, "m": 13, "e": 11, "ck": 13, "inter": 19, "intra": 15, "n": 12, "pc_vl": 35, "pc_lm": 40, "pc_m": 40, "pc_e": 30, "pc_ck": 40, "pc_inter": 70, "pc_intra": 50, "pc_n": 35, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Manuel Albino Morocho Carchi", "territorio": "AZUAY", "sucursal": "Nabón", "edad": "50", "vl": 22, "lm": 22, "m": 9, "e": 21, "ck": 21, "inter": 24, "intra": 22, "n": 21, "pc_vl": 83, "pc_lm": 83, "pc_m": 20, "pc_e": 80, "pc_ck": 80, "pc_inter": 95, "pc_intra": 83, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Thalia Marianela Mendez Atariguana", "territorio": "AZUAY", "sucursal": "Nabón", "edad": "30", "vl": 14, "lm": 10, "m": 6, "e": 6, "ck": 11, "inter": 21, "intra": 19, "n": 16, "pc_vl": 45, "pc_lm": 25, "pc_m": 12, "pc_e": 12, "pc_ck": 30, "pc_inter": 80, "pc_intra": 70, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Ana Patricia Cabrera Parra", "territorio": "ORIENTE", "sucursal": "Méndez", "edad": "49", "vl": 13, "lm": 12, "m": 11, "e": 11, "ck": 17, "inter": 25, "intra": 20, "n": 25, "pc_vl": 40, "pc_lm": 35, "pc_m": 30, "pc_e": 30, "pc_ck": 60, "pc_inter": 97, "pc_intra": 75, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Gabriela Leticia Cedeño Valdivieso", "territorio": "COSTA", "sucursal": "Milagro", "edad": "44", "vl": 19, "lm": 18, "m": 15, "e": 16, "ck": 20, "inter": 22, "intra": 22, "n": 25, "pc_vl": 70, "pc_lm": 65, "pc_m": 50, "pc_e": 55, "pc_ck": 75, "pc_inter": 83, "pc_intra": 83, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Andrea Estefania Martinez Montalvo", "territorio": "COSTA", "sucursal": "Santa Elena", "edad": "36", "vl": 17, "lm": 5, "m": 8, "e": 13, "ck": 18, "inter": 25, "intra": 23, "n": 24, "pc_vl": 60, "pc_lm": 10, "pc_m": 18, "pc_e": 40, "pc_ck": 65, "pc_inter": 97, "pc_intra": 85, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Jorge Eduardo Alarcón Santillan", "territorio": "COSTA", "sucursal": "Santa Elena", "edad": "61", "vl": 18, "lm": 13, "m": 15, "e": 13, "ck": 20, "inter": 16, "intra": 23, "n": 23, "pc_vl": 65, "pc_lm": 40, "pc_m": 50, "pc_e": 40, "pc_ck": 75, "pc_inter": 55, "pc_intra": 85, "pc_n": 85, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Katherine Gabriela Latorre Rodríguez", "territorio": "COSTA", "sucursal": "Santa Elena", "edad": "32", "vl": 22, "lm": 22, "m": 17, "e": 16, "ck": 24, "inter": 25, "intra": 24, "n": 27, "pc_vl": 83, "pc_lm": 83, "pc_m": 60, "pc_e": 55, "pc_ck": 95, "pc_inter": 97, "pc_intra": 95, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Cibela Lucrecia Moreira Pita", "territorio": "COSTA", "sucursal": "Santa Elena", "edad": "56", "vl": 11, "lm": 8, "m": 24, "e": 11, "ck": 7, "inter": 19, "intra": 17, "n": 15, "pc_vl": 30, "pc_lm": 18, "pc_m": 95, "pc_e": 30, "pc_ck": 15, "pc_inter": 70, "pc_intra": 60, "pc_n": 50, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Joselyn Karina Vélez Hallay", "territorio": "COSTA", "sucursal": "Guayaquil", "edad": "28", "vl": 20, "lm": 14, "m": 4, "e": 7, "ck": 6, "inter": 23, "intra": 23, "n": 14, "pc_vl": 75, "pc_lm": 45, "pc_m": 7, "pc_e": 15, "pc_ck": 12, "pc_inter": 85, "pc_intra": 85, "pc_n": 45, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Lisbeth Maribel Rivas Sanchez", "territorio": "COSTA", "sucursal": "Naranjal", "edad": "31", "vl": 12, "lm": 15, "m": 4, "e": 11, "ck": 13, "inter": 22, "intra": 20, "n": 21, "pc_vl": 35, "pc_lm": 50, "pc_m": 7, "pc_e": 30, "pc_ck": 40, "pc_inter": 83, "pc_intra": 75, "pc_n": 80, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Holger David Colcha López", "territorio": "COSTA", "sucursal": "Naranjal", "edad": "36", "vl": 16, "lm": 15, "m": 17, "e": 15, "ck": 20, "inter": 19, "intra": 17, "n": 18, "pc_vl": 55, "pc_lm": 50, "pc_m": 60, "pc_e": 50, "pc_ck": 75, "pc_inter": 70, "pc_intra": 60, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Carmen Miryam Beltran Ponce", "territorio": "COSTA", "sucursal": "La Libertad", "edad": "34", "vl": 27, "lm": 26, "m": 26, "e": 26, "ck": 25, "inter": 26, "intra": 26, "n": 25, "pc_vl": 99, "pc_lm": 97, "pc_m": 97, "pc_e": 97, "pc_ck": 97, "pc_inter": 97, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Jessica Tatiana Jaime Castillo", "territorio": "COSTA", "sucursal": "La Libertad", "edad": "34", "vl": 22, "lm": 25, "m": 16, "e": 15, "ck": 17, "inter": 26, "intra": 22, "n": 27, "pc_vl": 83, "pc_lm": 97, "pc_m": 55, "pc_e": 50, "pc_ck": 60, "pc_inter": 97, "pc_intra": 83, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Vicente Flavio Palacios Guzman", "territorio": "AZUAY", "sucursal": "Girón", "edad": "47", "vl": 17, "lm": 18, "m": 4, "e": 14, "ck": 23, "inter": 24, "intra": 22, "n": 16, "pc_vl": 60, "pc_lm": 65, "pc_m": 7, "pc_e": 45, "pc_ck": 85, "pc_inter": 95, "pc_intra": 83, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Belen Andreina Zambrano Mite", "territorio": "COSTA", "sucursal": "La Troncal", "edad": "30", "vl": 6, "lm": 12, "m": 10, "e": 11, "ck": 11, "inter": 17, "intra": 16, "n": 11, "pc_vl": 12, "pc_lm": 35, "pc_m": 25, "pc_e": 30, "pc_ck": 30, "pc_inter": 60, "pc_intra": 55, "pc_n": 30, "nv_vl": "Bajo", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Ruth Aracely Suarez Vera", "territorio": "COSTA", "sucursal": "La Libertad", "edad": "62", "vl": 17, "lm": 18, "m": 9, "e": 17, "ck": 21, "inter": 24, "intra": 23, "n": 21, "pc_vl": 60, "pc_lm": 65, "pc_m": 20, "pc_e": 60, "pc_ck": 80, "pc_inter": 95, "pc_intra": 85, "pc_n": 80, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Celia Lucia Alvarez Mora", "territorio": "COSTA", "sucursal": "La Troncal", "edad": "43", "vl": 23, "lm": 18, "m": 12, "e": 17, "ck": 19, "inter": 24, "intra": 24, "n": 23, "pc_vl": 85, "pc_lm": 65, "pc_m": 35, "pc_e": 60, "pc_ck": 70, "pc_inter": 95, "pc_intra": 95, "pc_n": 85, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Mercedes Esperanza Redrován Asanza", "territorio": "COSTA", "sucursal": "Naranjal", "edad": "34", "vl": 23, "lm": 22, "m": 12, "e": 20, "ck": 21, "inter": 24, "intra": 23, "n": 21, "pc_vl": 85, "pc_lm": 83, "pc_m": 35, "pc_e": 75, "pc_ck": 80, "pc_inter": 95, "pc_intra": 85, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Milton Tarquino López Tello", "territorio": "COSTA", "sucursal": "La Troncal", "edad": "55", "vl": 22, "lm": 13, "m": 4, "e": 10, "ck": 11, "inter": 21, "intra": 25, "n": 9, "pc_vl": 83, "pc_lm": 40, "pc_m": 7, "pc_e": 25, "pc_ck": 30, "pc_inter": 80, "pc_intra": 97, "pc_n": 20, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Bajo"}, {"nombre": "Maria Elena Linares De Rojas", "territorio": "COSTA", "sucursal": "Guayaquil", "edad": "68", "vl": 22, "lm": 23, "m": 8, "e": 8, "ck": 12, "inter": 26, "intra": 24, "n": 26, "pc_vl": 83, "pc_lm": 85, "pc_m": 18, "pc_e": 18, "pc_ck": 35, "pc_inter": 97, "pc_intra": 95, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ricardo Javier Zamora Villamar", "territorio": "COSTA", "sucursal": "Milagro", "edad": "34", "vl": 24, "lm": 27, "m": 18, "e": 21, "ck": 26, "inter": 27, "intra": 27, "n": 24, "pc_vl": 90, "pc_lm": 99, "pc_m": 65, "pc_e": 80, "pc_ck": 97, "pc_inter": 99, "pc_intra": 99, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Arianna Diva Arias Vásquez", "territorio": "COSTA", "sucursal": "Milagro", "edad": "28", "vl": 22, "lm": 21, "m": 16, "e": 14, "ck": 12, "inter": 25, "intra": 23, "n": 10, "pc_vl": 83, "pc_lm": 80, "pc_m": 55, "pc_e": 45, "pc_ck": 35, "pc_inter": 97, "pc_intra": 85, "pc_n": 25, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Bajo"}, {"nombre": "Mary Grace Correa Perero", "territorio": "COSTA", "sucursal": "La Libertad", "edad": "30", "vl": 23, "lm": 22, "m": 22, "e": 22, "ck": 22, "inter": 26, "intra": 25, "n": 26, "pc_vl": 85, "pc_lm": 83, "pc_m": 83, "pc_e": 83, "pc_ck": 83, "pc_inter": 97, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Roddy Fabian Mantilla Rodríguez", "territorio": "COSTA", "sucursal": "Playas", "edad": "47", "vl": 20, "lm": 23, "m": 13, "e": 17, "ck": 21, "inter": 21, "intra": 21, "n": 19, "pc_vl": 75, "pc_lm": 85, "pc_m": 40, "pc_e": 60, "pc_ck": 80, "pc_inter": 80, "pc_intra": 80, "pc_n": 70, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Gilda Iliana Franco Vargas", "territorio": "COSTA", "sucursal": "Guayaquil", "edad": "45", "vl": 19, "lm": 15, "m": 10, "e": 18, "ck": 12, "inter": 24, "intra": 22, "n": 18, "pc_vl": 70, "pc_lm": 50, "pc_m": 25, "pc_e": 65, "pc_ck": 35, "pc_inter": 95, "pc_intra": 83, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Juan Carlos Pulido Tamayo", "territorio": "COSTA", "sucursal": "Guayaquil", "edad": "41", "vl": 23, "lm": 11, "m": 16, "e": 16, "ck": 27, "inter": 26, "intra": 24, "n": 23, "pc_vl": 85, "pc_lm": 30, "pc_m": 55, "pc_e": 55, "pc_ck": 99, "pc_inter": 97, "pc_intra": 95, "pc_n": 85, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Betty Jesenia Palma Diaz", "territorio": "COSTA", "sucursal": "Playas", "edad": "34", "vl": 26, "lm": 25, "m": 18, "e": 21, "ck": 21, "inter": 26, "intra": 25, "n": 25, "pc_vl": 97, "pc_lm": 97, "pc_m": 65, "pc_e": 80, "pc_ck": 80, "pc_inter": 97, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Alexandra Mariela Tomala Rodriguez", "territorio": "COSTA", "sucursal": "Playas", "edad": "44", "vl": 21, "lm": 20, "m": 11, "e": 7, "ck": 19, "inter": 20, "intra": 22, "n": 25, "pc_vl": 80, "pc_lm": 75, "pc_m": 30, "pc_e": 15, "pc_ck": 70, "pc_inter": 75, "pc_intra": 83, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Oscar Ariel García Alcivar", "territorio": "COSTA", "sucursal": "Milagro", "edad": "32", "vl": 22, "lm": 19, "m": 16, "e": 22, "ck": 22, "inter": 25, "intra": 23, "n": 25, "pc_vl": 83, "pc_lm": 70, "pc_m": 55, "pc_e": 83, "pc_ck": 83, "pc_inter": 97, "pc_intra": 85, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Freddy Armando Alejandro Evangelista", "territorio": "COSTA", "sucursal": "Playas", "edad": "48", "vl": 13, "lm": 12, "m": 9, "e": 11, "ck": 18, "inter": 12, "intra": 14, "n": 10, "pc_vl": 40, "pc_lm": 35, "pc_m": 20, "pc_e": 30, "pc_ck": 65, "pc_inter": 35, "pc_intra": 45, "pc_n": 25, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Bajo"}, {"nombre": "Washington Rigoberto Moreno Barreiro", "territorio": "COSTA", "sucursal": "Milagro", "edad": "54", "vl": 19, "lm": 20, "m": 18, "e": 21, "ck": 17, "inter": 21, "intra": 19, "n": 21, "pc_vl": 70, "pc_lm": 75, "pc_m": 65, "pc_e": 80, "pc_ck": 60, "pc_inter": 80, "pc_intra": 70, "pc_n": 80, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Gloria Rosales Chávez", "territorio": "COSTA", "sucursal": "Santa Elena", "edad": "68", "vl": 15, "lm": 9, "m": 11, "e": 14, "ck": 13, "inter": 23, "intra": 21, "n": 20, "pc_vl": 50, "pc_lm": 20, "pc_m": 30, "pc_e": 45, "pc_ck": 40, "pc_inter": 85, "pc_intra": 80, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Marin Gomez", "territorio": "ORIENTE", "sucursal": "Limón", "edad": "", "vl": 19, "lm": 20, "m": 9, "e": 14, "ck": 13, "inter": 23, "intra": 22, "n": 18, "pc_vl": 70, "pc_lm": 75, "pc_m": 20, "pc_e": 45, "pc_ck": 40, "pc_inter": 85, "pc_intra": 83, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Maria De Los Angeles Mateo Cedeño", "territorio": "COSTA", "sucursal": "La Libertad", "edad": "29", "vl": 22, "lm": 14, "m": 20, "e": 15, "ck": 17, "inter": 19, "intra": 19, "n": 18, "pc_vl": 83, "pc_lm": 45, "pc_m": 75, "pc_e": 50, "pc_ck": 60, "pc_inter": 70, "pc_intra": 70, "pc_n": 65, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Fabian Guillermo Ulloa Rodas", "territorio": "AZUAY", "sucursal": "Gualaceo", "edad": "31", "vl": 11, "lm": 10, "m": 8, "e": 12, "ck": 11, "inter": 18, "intra": 16, "n": 14, "pc_vl": 30, "pc_lm": 25, "pc_m": 18, "pc_e": 35, "pc_ck": 30, "pc_inter": 65, "pc_intra": 55, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Zoila Chimborazo Gonzalez", "territorio": "CAÑAR", "sucursal": "Biblián", "edad": "62", "vl": 27, "lm": 27, "m": 27, "e": 27, "ck": 27, "inter": 27, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 99, "pc_m": 99, "pc_e": 99, "pc_ck": 99, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Galito Macario Vicuña Riera", "territorio": "CAÑAR", "sucursal": "Biblián", "edad": "64", "vl": 24, "lm": 19, "m": 24, "e": 23, "ck": 25, "inter": 27, "intra": 27, "n": 27, "pc_vl": 90, "pc_lm": 70, "pc_m": 95, "pc_e": 85, "pc_ck": 97, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Mariela Samantha Baidal Robinson", "territorio": "COSTA", "sucursal": "Playas", "edad": "27", "vl": 18, "lm": 21, "m": 14, "e": 18, "ck": 15, "inter": 19, "intra": 20, "n": 11, "pc_vl": 65, "pc_lm": 80, "pc_m": 45, "pc_e": 65, "pc_ck": 50, "pc_inter": 70, "pc_intra": 75, "pc_n": 30, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Freddy Adrián Saltos Tenesaca", "territorio": "COSTA", "sucursal": "Naranjal", "edad": "32", "vl": 13, "lm": 18, "m": 12, "e": 16, "ck": 22, "inter": 24, "intra": 22, "n": 13, "pc_vl": 40, "pc_lm": 65, "pc_m": 35, "pc_e": 55, "pc_ck": 83, "pc_inter": 95, "pc_intra": 83, "pc_n": 40, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Nube Ana Luisa Rodriguez Lazo", "territorio": "CAÑAR", "sucursal": "El Tambo", "edad": "72", "vl": 22, "lm": 11, "m": 22, "e": 18, "ck": 15, "inter": 17, "intra": 20, "n": 21, "pc_vl": 83, "pc_lm": 30, "pc_m": 83, "pc_e": 65, "pc_ck": 50, "pc_inter": 60, "pc_intra": 75, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ruth Pilar Lopez Rodriguez", "territorio": "CAÑAR", "sucursal": "El Tambo", "edad": "40", "vl": 8, "lm": 9, "m": 6, "e": 7, "ck": 10, "inter": 13, "intra": 13, "n": 15, "pc_vl": 18, "pc_lm": 20, "pc_m": 12, "pc_e": 15, "pc_ck": 25, "pc_inter": 40, "pc_intra": 40, "pc_n": 50, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Marcos Giovanny Orellana Parra", "territorio": "COSTA", "sucursal": "La Troncal", "edad": "49", "vl": 21, "lm": 24, "m": 20, "e": 21, "ck": 19, "inter": 23, "intra": 20, "n": 24, "pc_vl": 80, "pc_lm": 95, "pc_m": 75, "pc_e": 80, "pc_ck": 70, "pc_inter": 85, "pc_intra": 75, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Doris Estela Oyola Arcalle", "territorio": "AZUAY", "sucursal": "San Fernando", "edad": "48", "vl": 21, "lm": 18, "m": 19, "e": 17, "ck": 17, "inter": 21, "intra": 20, "n": 19, "pc_vl": 80, "pc_lm": 65, "pc_m": 70, "pc_e": 60, "pc_ck": 60, "pc_inter": 80, "pc_intra": 75, "pc_n": 70, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "José Homero Zambrano Calle", "territorio": "COSTA", "sucursal": "La Troncal", "edad": "65", "vl": 15, "lm": 19, "m": 12, "e": 14, "ck": 20, "inter": 23, "intra": 21, "n": 17, "pc_vl": 50, "pc_lm": 70, "pc_m": 35, "pc_e": 45, "pc_ck": 75, "pc_inter": 85, "pc_intra": 80, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Gerardo David Alvarado Verdugo", "territorio": "CAÑAR", "sucursal": "Cañar", "edad": "72", "vl": 24, "lm": 23, "m": 19, "e": 21, "ck": 25, "inter": 25, "intra": 25, "n": 26, "pc_vl": 90, "pc_lm": 85, "pc_m": 70, "pc_e": 80, "pc_ck": 97, "pc_inter": 97, "pc_intra": 97, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Carlos Humberto López Ortiz", "territorio": "CAÑAR", "sucursal": "Cañar", "edad": "60", "vl": 20, "lm": 24, "m": 23, "e": 19, "ck": 23, "inter": 26, "intra": 23, "n": 23, "pc_vl": 75, "pc_lm": 95, "pc_m": 85, "pc_e": 70, "pc_ck": 85, "pc_inter": 97, "pc_intra": 85, "pc_n": 85, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Ignacio Bustamante Bravo", "territorio": "CAÑAR", "sucursal": "Cañar", "edad": "52", "vl": 17, "lm": 17, "m": 3, "e": 15, "ck": 12, "inter": 19, "intra": 17, "n": 17, "pc_vl": 60, "pc_lm": 60, "pc_m": 5, "pc_e": 50, "pc_ck": 35, "pc_inter": 70, "pc_intra": 60, "pc_n": 60, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Betty Cira Velin Jaramillo", "territorio": "ORIENTE", "sucursal": "Palora", "edad": "48", "vl": 21, "lm": 15, "m": 19, "e": 19, "ck": 26, "inter": 27, "intra": 26, "n": 27, "pc_vl": 80, "pc_lm": 50, "pc_m": 70, "pc_e": 70, "pc_ck": 97, "pc_inter": 99, "pc_intra": 97, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Silvio Saul Saula Palaguachi", "territorio": "CAÑAR", "sucursal": "Biblián", "edad": "41", "vl": 27, "lm": 25, "m": 27, "e": 27, "ck": 27, "inter": 27, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 97, "pc_m": 99, "pc_e": 99, "pc_ck": 99, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Nancy Irene Pelaez Tapia", "territorio": "CAÑAR", "sucursal": "Biblián", "edad": "55", "vl": 12, "lm": 11, "m": 12, "e": 12, "ck": 12, "inter": 18, "intra": 18, "n": 16, "pc_vl": 35, "pc_lm": 30, "pc_m": 35, "pc_e": 35, "pc_ck": 35, "pc_inter": 65, "pc_intra": 65, "pc_n": 55, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Juan Carlos Pesántez Castro", "territorio": "CAÑAR", "sucursal": "Biblián", "edad": "42", "vl": 21, "lm": 21, "m": 13, "e": 17, "ck": 26, "inter": 22, "intra": 22, "n": 17, "pc_vl": 80, "pc_lm": 80, "pc_m": 40, "pc_e": 60, "pc_ck": 97, "pc_inter": 83, "pc_intra": 83, "pc_n": 60, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Rosa Elvira Pomavilla Mayancela", "territorio": "CAÑAR", "sucursal": "El Tambo", "edad": "30", "vl": 27, "lm": 26, "m": 27, "e": 27, "ck": 26, "inter": 27, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 97, "pc_m": 99, "pc_e": 99, "pc_ck": 97, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Víctor Heriberto Tama Boni", "territorio": "CAÑAR", "sucursal": "El Tambo", "edad": "51", "vl": 18, "lm": 18, "m": 14, "e": 19, "ck": 18, "inter": 22, "intra": 20, "n": 18, "pc_vl": 65, "pc_lm": 65, "pc_m": 45, "pc_e": 70, "pc_ck": 65, "pc_inter": 83, "pc_intra": 75, "pc_n": 65, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Jeny Yolanda Muyulema Guaraca.", "territorio": "CAÑAR", "sucursal": "Cañar", "edad": "47", "vl": 23, "lm": 19, "m": 19, "e": 22, "ck": 24, "inter": 26, "intra": 26, "n": 27, "pc_vl": 85, "pc_lm": 70, "pc_m": 70, "pc_e": 83, "pc_ck": 95, "pc_inter": 97, "pc_intra": 97, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Luis Alberto Santander Santander", "territorio": "CAÑAR", "sucursal": "El Tambo", "edad": "41", "vl": 27, "lm": 27, "m": 27, "e": 27, "ck": 27, "inter": 27, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 99, "pc_m": 99, "pc_e": 99, "pc_ck": 99, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Judith Janneth Maldonado Lopez", "territorio": "ORIENTE", "sucursal": "Méndez", "edad": "34", "vl": 19, "lm": 17, "m": 14, "e": 11, "ck": 25, "inter": 21, "intra": 23, "n": 26, "pc_vl": 70, "pc_lm": 60, "pc_m": 45, "pc_e": 30, "pc_ck": 90, "pc_inter": 80, "pc_intra": 85, "pc_n": 97, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Dayci María Eliza Mancheno Padilla", "territorio": "CAÑAR", "sucursal": "Cañar", "edad": "45", "vl": 16, "lm": 17, "m": 16, "e": 14, "ck": 15, "inter": 20, "intra": 20, "n": 21, "pc_vl": 55, "pc_lm": 60, "pc_m": 55, "pc_e": 45, "pc_ck": 50, "pc_inter": 75, "pc_intra": 75, "pc_n": 80, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Mélida Del Rocío González Quinche", "territorio": "EL_ORO", "sucursal": "Zaruma", "edad": "40", "vl": 22, "lm": 22, "m": 24, "e": 22, "ck": 26, "inter": 27, "intra": 25, "n": 27, "pc_vl": 83, "pc_lm": 83, "pc_m": 95, "pc_e": 83, "pc_ck": 97, "pc_inter": 99, "pc_intra": 90, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Joffre Jamil Espinoza Cedillo", "territorio": "AZUAY", "sucursal": "Pucará", "edad": "28", "vl": 7, "lm": 7, "m": 7, "e": 9, "ck": 8, "inter": 9, "intra": 9, "n": 9, "pc_vl": 15, "pc_lm": 15, "pc_m": 15, "pc_e": 20, "pc_ck": 18, "pc_inter": 20, "pc_intra": 20, "pc_n": 20, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Bajo", "nv_intra": "Bajo", "nv_n": "Bajo"}, {"nombre": "Raul Elias Reyes Reyes", "territorio": "AZUAY", "sucursal": "Pucará", "edad": "67", "vl": 25, "lm": 14, "m": 11, "e": 24, "ck": 16, "inter": 24, "intra": 23, "n": 21, "pc_vl": 95, "pc_lm": 45, "pc_m": 30, "pc_e": 95, "pc_ck": 55, "pc_inter": 95, "pc_intra": 85, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Delgado Cordova Rosa Nieve", "territorio": "AZUAY", "sucursal": "Pucará", "edad": "50", "vl": 25, "lm": 14, "m": 16, "e": 21, "ck": 21, "inter": 22, "intra": 24, "n": 27, "pc_vl": 95, "pc_lm": 45, "pc_m": 55, "pc_e": 80, "pc_ck": 80, "pc_inter": 83, "pc_intra": 95, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Gladys Lorena Gómez Navas", "territorio": "LOJA", "sucursal": "Loja", "edad": "46", "vl": 17, "lm": 18, "m": 21, "e": 13, "ck": 21, "inter": 22, "intra": 18, "n": 22, "pc_vl": 60, "pc_lm": 65, "pc_m": 80, "pc_e": 40, "pc_ck": 80, "pc_inter": 83, "pc_intra": 65, "pc_n": 83, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Alto"}, {"nombre": "Rosario Del Pilar Betancourt Cumbajin", "territorio": "NORTE", "sucursal": "Quito", "edad": "57", "vl": 9, "lm": 3, "m": 11, "e": 11, "ck": 14, "inter": 15, "intra": 21, "n": 12, "pc_vl": 20, "pc_lm": 5, "pc_m": 30, "pc_e": 30, "pc_ck": 45, "pc_inter": 50, "pc_intra": 80, "pc_n": 35, "nv_vl": "Bajo", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Diana Jaqueline Vera Ramon", "territorio": "EL_ORO", "sucursal": "Zaruma", "edad": "43", "vl": 14, "lm": 15, "m": 12, "e": 13, "ck": 12, "inter": 13, "intra": 14, "n": 12, "pc_vl": 45, "pc_lm": 50, "pc_m": 35, "pc_e": 40, "pc_ck": 35, "pc_inter": 40, "pc_intra": 45, "pc_n": 35, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Angélica Patricia Moscoso Zuñiga", "territorio": "NORTE", "sucursal": "Quito", "edad": "35", "vl": 11, "lm": 3, "m": 13, "e": 3, "ck": 7, "inter": 16, "intra": 20, "n": 20, "pc_vl": 30, "pc_lm": 5, "pc_m": 40, "pc_e": 5, "pc_ck": 15, "pc_inter": 55, "pc_intra": 75, "pc_n": 75, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Angélica Naula Cayambe", "territorio": "LOJA", "sucursal": "Loja", "edad": "42", "vl": 10, "lm": 15, "m": 3, "e": 15, "ck": 9, "inter": 13, "intra": 16, "n": 10, "pc_vl": 25, "pc_lm": 50, "pc_m": 5, "pc_e": 50, "pc_ck": 20, "pc_inter": 40, "pc_intra": 55, "pc_n": 25, "nv_vl": "Bajo", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Bajo"}, {"nombre": "Maria Nauda Pugo Sivisapa", "territorio": "LOJA", "sucursal": "Loja", "edad": "66", "vl": 15, "lm": 16, "m": 6, "e": 9, "ck": 12, "inter": 19, "intra": 18, "n": 14, "pc_vl": 50, "pc_lm": 55, "pc_m": 12, "pc_e": 20, "pc_ck": 35, "pc_inter": 70, "pc_intra": 65, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Carmen Beatriz Zuleta Armijos", "territorio": "LOJA", "sucursal": "Saraguro", "edad": "58", "vl": 25, "lm": 17, "m": 10, "e": 16, "ck": 22, "inter": 27, "intra": 23, "n": 19, "pc_vl": 95, "pc_lm": 60, "pc_m": 25, "pc_e": 55, "pc_ck": 83, "pc_inter": 99, "pc_intra": 85, "pc_n": 70, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Medio"}, {"nombre": "Luis Fernando Gutierrez Yanez", "territorio": "NORTE", "sucursal": "Machachi", "edad": "62", "vl": 21, "lm": 21, "m": 22, "e": 16, "ck": 25, "inter": 27, "intra": 25, "n": 24, "pc_vl": 80, "pc_lm": 80, "pc_m": 83, "pc_e": 55, "pc_ck": 90, "pc_inter": 99, "pc_intra": 90, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Marcelo Eduardo Cadena Carrillo", "territorio": "NORTE", "sucursal": "Machachi", "edad": "37", "vl": 22, "lm": 23, "m": 22, "e": 20, "ck": 25, "inter": 26, "intra": 26, "n": 24, "pc_vl": 83, "pc_lm": 85, "pc_m": 83, "pc_e": 75, "pc_ck": 90, "pc_inter": 97, "pc_intra": 97, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Alba Maria Morocho Malla", "territorio": "LOJA", "sucursal": "Oña", "edad": "45", "vl": 16, "lm": 12, "m": 11, "e": 11, "ck": 16, "inter": 20, "intra": 21, "n": 23, "pc_vl": 55, "pc_lm": 35, "pc_m": 30, "pc_e": 30, "pc_ck": 55, "pc_inter": 75, "pc_intra": 80, "pc_n": 85, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Sandra Paulina Venegas Montatixe", "territorio": "NORTE", "sucursal": "Machachi", "edad": "49", "vl": 15, "lm": 9, "m": 8, "e": 8, "ck": 12, "inter": 18, "intra": 16, "n": 13, "pc_vl": 50, "pc_lm": 20, "pc_m": 18, "pc_e": 18, "pc_ck": 35, "pc_inter": 65, "pc_intra": 55, "pc_n": 40, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Yamile Montalvo", "territorio": "NORTE", "sucursal": "Quito", "edad": "46", "vl": 17, "lm": 12, "m": 3, "e": 7, "ck": 7, "inter": 16, "intra": 15, "n": 4, "pc_vl": 60, "pc_lm": 35, "pc_m": 5, "pc_e": 15, "pc_ck": 15, "pc_inter": 55, "pc_intra": 50, "pc_n": 7, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Bajo", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Medio", "nv_intra": "Medio", "nv_n": "Bajo"}, {"nombre": "Yoselin Yocastha Flores Reyes", "territorio": "LOJA", "sucursal": "Catamayo", "edad": "26", "vl": 15, "lm": 10, "m": 11, "e": 9, "ck": 16, "inter": 24, "intra": 17, "n": 11, "pc_vl": 50, "pc_lm": 25, "pc_m": 30, "pc_e": 20, "pc_ck": 55, "pc_inter": 95, "pc_intra": 60, "pc_n": 30, "nv_vl": "Medio", "nv_lm": "Bajo", "nv_m": "Medio", "nv_e": "Bajo", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Denisse Pamela Jumbo Gómez", "territorio": "NORTE", "sucursal": "Quito", "edad": "29", "vl": 21, "lm": 21, "m": 16, "e": 18, "ck": 16, "inter": 25, "intra": 21, "n": 21, "pc_vl": 80, "pc_lm": 80, "pc_m": 55, "pc_e": 65, "pc_ck": 55, "pc_inter": 90, "pc_intra": 80, "pc_n": 80, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Stefany Lizbeth Hurtado Trejo", "territorio": "LOJA", "sucursal": "Saraguro", "edad": "30", "vl": 15, "lm": 24, "m": 6, "e": 15, "ck": 27, "inter": 24, "intra": 22, "n": 22, "pc_vl": 50, "pc_lm": 95, "pc_m": 12, "pc_e": 50, "pc_ck": 99, "pc_inter": 95, "pc_intra": 83, "pc_n": 83, "nv_vl": "Medio", "nv_lm": "Alto", "nv_m": "Bajo", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Victor Vinicio Arias Orellana", "territorio": "LOJA", "sucursal": "Oña", "edad": "25", "vl": 21, "lm": 17, "m": 14, "e": 17, "ck": 21, "inter": 22, "intra": 22, "n": 24, "pc_vl": 80, "pc_lm": 60, "pc_m": 45, "pc_e": 60, "pc_ck": 80, "pc_inter": 83, "pc_intra": 83, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Rosa Jomara Cajas Capa", "territorio": "LOJA", "sucursal": "Oña", "edad": "33", "vl": 20, "lm": 19, "m": 14, "e": 20, "ck": 17, "inter": 23, "intra": 23, "n": 25, "pc_vl": 75, "pc_lm": 70, "pc_m": 45, "pc_e": 75, "pc_ck": 60, "pc_inter": 85, "pc_intra": 85, "pc_n": 90, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Silvana Patricia Pullaguari Aguilar", "territorio": "LOJA", "sucursal": "Loja", "edad": "49", "vl": 22, "lm": 14, "m": 18, "e": 24, "ck": 25, "inter": 27, "intra": 23, "n": 25, "pc_vl": 83, "pc_lm": 45, "pc_m": 65, "pc_e": 95, "pc_ck": 90, "pc_inter": 99, "pc_intra": 85, "pc_n": 90, "nv_vl": "Alto", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Lydia Sulima Armijos Tituana", "territorio": "LOJA", "sucursal": "Loja", "edad": "62", "vl": 23, "lm": 20, "m": 12, "e": 15, "ck": 15, "inter": 26, "intra": 25, "n": 23, "pc_vl": 85, "pc_lm": 75, "pc_m": 35, "pc_e": 50, "pc_ck": 50, "pc_inter": 97, "pc_intra": 90, "pc_n": 85, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Naula Espinoza Eliza De Jesús", "territorio": "LOJA", "sucursal": "Oña", "edad": "50", "vl": 18, "lm": 18, "m": 15, "e": 12, "ck": 19, "inter": 26, "intra": 24, "n": 24, "pc_vl": 65, "pc_lm": 65, "pc_m": 50, "pc_e": 35, "pc_ck": 70, "pc_inter": 97, "pc_intra": 95, "pc_n": 95, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Enith Josefina Rosales", "territorio": "LOJA", "sucursal": "Loja", "edad": "61", "vl": 13, "lm": 13, "m": 20, "e": 8, "ck": 7, "inter": 21, "intra": 15, "n": 14, "pc_vl": 40, "pc_lm": 40, "pc_m": 75, "pc_e": 18, "pc_ck": 15, "pc_inter": 80, "pc_intra": 50, "pc_n": 45, "nv_vl": "Medio", "nv_lm": "Medio", "nv_m": "Alto", "nv_e": "Bajo", "nv_ck": "Bajo", "nv_inter": "Alto", "nv_intra": "Medio", "nv_n": "Medio"}, {"nombre": "Manuel Fabian Armijos Armijos", "territorio": "LOJA", "sucursal": "Saraguro", "edad": "28", "vl": 27, "lm": 26, "m": 25, "e": 26, "ck": 27, "inter": 27, "intra": 27, "n": 27, "pc_vl": 99, "pc_lm": 97, "pc_m": 90, "pc_e": 97, "pc_ck": 99, "pc_inter": 99, "pc_intra": 99, "pc_n": 99, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Alto", "nv_e": "Alto", "nv_ck": "Alto", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Jenny Lorena Lapo Ordoñez", "territorio": "LOJA", "sucursal": "Catamayo", "edad": "41", "vl": 24, "lm": 23, "m": 16, "e": 19, "ck": 18, "inter": 26, "intra": 25, "n": 26, "pc_vl": 90, "pc_lm": 85, "pc_m": 55, "pc_e": 70, "pc_ck": 65, "pc_inter": 97, "pc_intra": 90, "pc_n": 97, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}, {"nombre": "Cristina Hidalgo Santín", "territorio": "LOJA", "sucursal": "Catamayo", "edad": "49", "vl": 21, "lm": 22, "m": 12, "e": 15, "ck": 18, "inter": 23, "intra": 22, "n": 24, "pc_vl": 80, "pc_lm": 83, "pc_m": 35, "pc_e": 50, "pc_ck": 65, "pc_inter": 85, "pc_intra": 83, "pc_n": 95, "nv_vl": "Alto", "nv_lm": "Alto", "nv_m": "Medio", "nv_e": "Medio", "nv_ck": "Medio", "nv_inter": "Alto", "nv_intra": "Alto", "nv_n": "Alto"}];
+
+const INTELS = [
+  {key:'vl',   pc:'pc_vl',   nv:'nv_vl',   label:'Verbal-Lingüística',  short:'VL',    g:'B'},
+  {key:'lm',   pc:'pc_lm',   nv:'nv_lm',   label:'Lógico-Matemática',   short:'LM',    g:'A'},
+  {key:'m',    pc:'pc_m',    nv:'nv_m',    label:'Musical',             short:'M',     g:'B'},
+  {key:'e',    pc:'pc_e',    nv:'nv_e',    label:'Espacial',            short:'E',     g:'A'},
+  {key:'ck',   pc:'pc_ck',   nv:'nv_ck',   label:'Corp-Kinestésica',    short:'CK',    g:'B'},
+  {key:'inter',pc:'pc_inter',nv:'nv_inter', label:'Interpersonal',       short:'Inter', g:'A'},
+  {key:'intra',pc:'pc_intra',nv:'nv_intra', label:'Intrapersonal',       short:'Intra', g:'A'},
+  {key:'n',    pc:'pc_n',    nv:'nv_n',    label:'Naturalista',         short:'N',     g:'B'},
+];
+
+const GA={fill:'rgba(59,110,165,.55)',bord:'#254e7e',solid:'#3b6ea5'};
+const GB={fill:'rgba(90,143,78,.55)', bord:'#3a6232',solid:'#5a8f4e'};
+function ic(i){return i.g==='A'?GA:GB;}
+
+// Colores únicos por territorio para los radares de inicio
+const TERR_COLORS=[
+  {fill:'rgba(194,104,48,.18)', bord:'#c26830', pt:'#8b4010'},  // naranja terracota
+  {fill:'rgba(74,127,168,.18)', bord:'#4a7fa8', pt:'#2a5a80'},  // azul acero
+  {fill:'rgba(106,158,84,.18)', bord:'#6a9e54', pt:'#3a6632'},  // verde
+  {fill:'rgba(139,95,160,.18)', bord:'#8b5fa0', pt:'#5a2a80'},  // violeta
+  {fill:'rgba(196,154,42,.18)', bord:'#c49a2a', pt:'#7a5800'},  // dorado
+];
+
+const PAL_TERR=['#c26830','#4a7fa8','#6a9e54','#8b5fa0','#c49a2a'];
+const PAL_NIVEL={
+  'Alto':      {fill:'rgba(198,239,206,.75)',bord:'#1a5e1f'},
+  'Medio Alto':{fill:'rgba(255,235,156,.75)',bord:'#6e3f00'},
+  'Medio':     {fill:'rgba(255,204,153,.75)',bord:'#5e2c00'},
+  'Medio Bajo':{fill:'rgba(255,199,206,.75)',bord:'#7a0000'},
+  'Bajo':      {fill:'rgba(204,0,0,.6)',     bord:'#7a0000'},
+};
+
+function nClass(n){const m={'Alto':'n-Alto','Medio Alto':'n-MedioAlto','Medio':'n-Medio','Medio Bajo':'n-MedioBajo','Bajo':'n-Bajo'};return m[n]||'n-ND';}
+
+let byT={};
+function __buildByT(){
+byT={};
+DATA.forEach(p=>{
+  const t=p.territorio||'?',s=p.sucursal||'Sin sucursal';
+  if(!byT[t])byT[t]={};
+  if(!byT[t][s])byT[t][s]=[];
+  byT[t][s].push(p);
+});
+}
+__buildByT();
+let TL=Object.keys(byT).sort();
+function __rebuildTL(){TL=Object.keys(byT).sort();}
+
+const CH={};
+function dk(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+
+const AX={ticks:{color:'#6b4828',font:{size:10}},grid:{color:'rgba(160,110,60,.15)'},border:{color:'#ddd3c3'}};
+const AXr={ticks:{color:'#6b4828',font:{size:10},maxRotation:35,minRotation:20},grid:{color:'rgba(160,110,60,.15)'},border:{color:'#ddd3c3'}};
+
+function avgPc(pp){
+  return INTELS.map(i=>{
+    const v=pp.map(p=>p[i.pc]).filter(x=>x!=null);
+    return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;
+  });
+}
+
+/* ── RADAR DE INTELIGENCIAS (percentiles) ── */
+function makeIntelRadar(id, pp, colorSet){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  const avgs=avgPc(pp);
+  CH[id]=new Chart(el,{type:'radar',data:{
+    labels:INTELS.map(i=>i.label),
+    datasets:[{
+      label:'Percentil promedio',
+      data:avgs,
+      backgroundColor: colorSet.fill,
+      borderColor:     colorSet.bord,
+      borderWidth:2,
+      pointBackgroundColor: INTELS.map(i=>ic(i).solid),
+      pointBorderColor:'#fff',
+      pointBorderWidth:1.5,
+      pointRadius:5,
+    }]
+  },options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{r:{
+      min:0,max:100,
+      ticks:{color:'#7a5e3e',font:{size:8},stepSize:25,backdropColor:'transparent'},
+      grid:{color:'rgba(160,110,60,.2)'},
+      pointLabels:{color:'#4a3318',font:{size:10,weight:'600'}},
+      angleLines:{color:'rgba(160,110,60,.2)'}
+    }},
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:c=>` Percentil promedio: ${c.raw} — ${INTELS[c.dataIndex].label}`}}
+    }
+  }});
+}
+
+/* ── RADAR NIVELES — 4 inteligencias clave como ejes, niveles como datasets ── */
+function makeNivelRadar(id,pp){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  const KEYS=[
+    {key:'pc_inter', nvKey:'nv_inter', label:'Interpersonal'},
+    {key:'pc_intra', nvKey:'nv_intra', label:'Intrapersonal'},
+    {key:'pc_e',     nvKey:'nv_e',     label:'Espacial'},
+    {key:'pc_lm',    nvKey:'nv_lm',    label:'Lógico-Matemática'},
+  ];
+  // Orden de menor a mayor para que Alto quede encima en el radar
+  const nivs=[
+    {label:'Bajo',       fill:'rgba(204,0,0,.50)',       bord:'#cc0000'},
+    {label:'Medio Bajo', fill:'rgba(255,110,50,.50)',    bord:'#e05010'},
+    {label:'Medio',      fill:'rgba(255,220,50,.50)',    bord:'#c8a000'},
+    {label:'Medio Alto', fill:'rgba(220,180,0,.50)',     bord:'#a07800'},
+    {label:'Alto',       fill:'rgba(50,180,80,.55)',     bord:'#1a7a30'},
+  ];
+  const datasets=nivs.map(nv=>{
+    const data=KEYS.map(k=>{
+      const personas=pp.filter(p=>p[k.nvKey]===nv.label);
+      return pp.length ? Math.round(personas.length/pp.length*100) : 0;
+    });
+    return {
+      label:nv.label, data,
+      backgroundColor:nv.fill,
+      borderColor:nv.bord,
+      borderWidth:2,
+      pointBackgroundColor:nv.bord,
+      pointBorderColor:'#fff',
+      pointBorderWidth:1,
+      pointRadius:4,
+    };
+  });
+  CH[id]=new Chart(el,{type:'radar',data:{
+    labels:KEYS.map(k=>k.label),
+    datasets,
+  },options:{responsive:true,maintainAspectRatio:false,
+    scales:{r:{min:0,max:100,
+      ticks:{color:'#7a5e3e',font:{size:8},stepSize:25,backdropColor:'transparent'},
+      grid:{color:'rgba(160,110,60,.2)'},
+      pointLabels:{color:'#4a3318',font:{size:11,weight:'700'}},
+      angleLines:{color:'rgba(160,110,60,.2)'}}},
+    plugins:{
+      legend:{display:true,position:'bottom',
+        labels:{color:'#4a3318',font:{size:10},boxWidth:12,padding:8}},
+      tooltip:{callbacks:{
+        label:c=>`${c.dataset.label}: ${c.raw}% de personas`
+      }}
+    }
+  }});
+}
+
+/* ── BAR PERCENTILES ── */
+function makePercBar(id,pp){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el,{type:'bar',data:{
+    labels:INTELS.map(i=>i.label),
+    datasets:[{label:'Percentil promedio',data:avgPc(pp),
+      backgroundColor:INTELS.map(i=>ic(i).fill),borderColor:INTELS.map(i=>ic(i).bord),
+      borderWidth:2,borderRadius:5}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:AXr,y:{...AX,min:0,max:100}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Percentil promedio: ${c.raw}`}}}}}); }
+
+/* ── BAR PERSONA ── */
+function makePersonaBar(id,p){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el,{type:'bar',data:{
+    labels:INTELS.map(i=>i.label),
+    datasets:[{label:'Puntaje /27',data:INTELS.map(i=>p[i.key]??0),
+      backgroundColor:INTELS.map(i=>ic(i).fill),borderColor:INTELS.map(i=>ic(i).bord),
+      borderWidth:2,borderRadius:5}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:AXr,y:{...AX,min:0,max:27}},
+    plugins:{legend:{display:false}}}});
+}
+
+/* ── BAR MÚLTIPLES PERSONAS ── */
+function makePersonsBar(id,pp){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el,{type:'bar',
+    data:{
+      labels:pp.map(p=>p.nombre.split(' ').slice(0,2).join(' ')),
+      datasets:INTELS.map(i=>({
+        label:i.label,data:pp.map(p=>p[i.key]??0),
+        backgroundColor:ic(i).fill,borderColor:ic(i).bord,borderWidth:1,borderRadius:3}))
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{...AX,ticks:{color:'#6b4828',font:{size:10},maxRotation:40,minRotation:25}},
+        y:{...AX,min:0,max:27}},
+      plugins:{legend:{labels:{color:'#4a3318',font:{size:10},boxWidth:12}}}}});
+}
+
+/* ── PIE: distribución total de puntajes por inteligencia ── */
+/* ── PIE: distribución total de puntajes por inteligencia ── */
+function makePie(id,pp){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  const totales=INTELS.map(i=>pp.reduce((a,p)=>a+(p[i.key]??0),0));
+  const grand=totales.reduce((a,b)=>a+b,0)||1;
+  // Colores de grupo: A=azul, B=verde, mismos que el resto de gráficos de inteligencias
+  const PIE_FILLS=INTELS.map(i=>i.g==='A'?'rgba(59,110,165,.75)':'rgba(90,143,78,.75)');
+  const PIE_BORDS=INTELS.map(i=>i.g==='A'?'#254e7e':'#3a6232');
+  CH[id]=new Chart(el,{type:'pie',data:{
+    labels:INTELS.map(i=>i.label),
+    datasets:[{
+      data:totales,
+      backgroundColor:PIE_FILLS,
+      borderColor:PIE_BORDS,
+      borderWidth:2,
+    }]
+  },options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'right',labels:{color:'#4a3318',font:{size:10},boxWidth:14,padding:6}},
+      tooltip:{callbacks:{
+        title:items=>`${items[0].label}`,
+        label:c=>{
+          const pct=(c.raw/grand*100).toFixed(1);
+          return [`Total de puntajes: ${c.raw}`, `Porcentaje: ${pct}%`];
+        }
+      }},
+      // Etiqueta con porcentaje dentro del pastel usando datalabels-free approach
+    }
+  },plugins:[{
+    id:'pieLabels',
+    afterDatasetsDraw(chart){
+      const{ctx,data}=chart;
+      ctx.save();
+      chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+        const{x,y}=arc.tooltipPosition();
+        const pct=(data.datasets[0].data[i]/grand*100).toFixed(1);
+        if(parseFloat(pct)<3)return; // no dibujar si es muy pequeño
+        ctx.fillStyle='#ffffff';
+        ctx.font='bold 11px Segoe UI,sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.shadowColor='rgba(0,0,0,.4)';
+        ctx.shadowBlur=3;
+        ctx.fillText(`${pct}%`,x,y);
+        ctx.shadowBlur=0;
+      });
+      ctx.restore();
+    }
+  }]});
+}
+function makeGlobal(){
+  dk('cg-global');const el=document.getElementById('cg-global');if(!el)return;
+  CH['cg-global']=new Chart(el,{type:'bar',data:{
+    labels:INTELS.map(i=>i.label),
+    datasets:[{label:'Percentil promedio',data:avgPc(DATA),
+      backgroundColor:INTELS.map(i=>ic(i).fill),borderColor:INTELS.map(i=>ic(i).bord),
+      borderWidth:2,borderRadius:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:AXr,y:{...AX,min:0,max:100}},
+    plugins:{legend:{display:false}}}});
+}
+
+/* ── BAR PERSONAS POR TERRITORIO ── */
+function makeTerrBar(id){
+  dk(id);const el=document.getElementById(id);if(!el)return;
+  CH[id]=new Chart(el,{type:'bar',data:{
+    labels:TL,
+    datasets:[{label:'Personas',
+      data:TL.map(t=>Object.values(byT[t]).flat().length),
+      backgroundColor:PAL_TERR.map(c=>c+'cc'),borderColor:PAL_TERR,
+      borderWidth:2,borderRadius:6}]
+  },options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:AX,y:{...AX,min:0}},
+    plugins:{legend:{display:false}}}});
+}
+
+// ── NAVIGATION ──
+function sv(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function showWelcome(){document.querySelectorAll('.tp-item').forEach(e=>e.classList.remove('active'));sv('v-welcome');}
+
+function showTerr(t){
+  document.getElementById('bc-terr').textContent=t;
+  document.getElementById('vt-terr').textContent=t;
+  const pp=Object.values(byT[t]).flat(),ss=Object.keys(byT[t]).sort();
+  document.getElementById('vs-terr').textContent=`${pp.length} persona${pp.length!==1?'s':''} · ${ss.length} sucursal${ss.length!==1?'es':''}`;
+
+  document.getElementById('suc-cards').innerHTML=ss.map(s=>{
+    const n=byT[t][s].length;
+    return `<div class="mini-card" onclick="showSuc('${esc(t)}','${esc(s)}')">
+      <div class="mc-name">${s}</div>
+      <div class="mc-chips"><span style="font-size:11px;color:var(--muted);font-weight:600">${n} persona${n!==1?'s':''}</span></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('tb-terr').innerHTML=pp.map(p=>
+    `<tr class="rc" onclick='showPers(${jss(p)})'>
+      <td style="font-weight:700;color:var(--text2)">${p.nombre}</td>
+      <td style="color:var(--muted)">${p.sucursal||''}</td>
+      ${INTELS.map(i=>`<td><span class="chip ${nClass(p[i.nv])}">${p[i.pc]??'—'}</span></td>`).join('')}
+    </tr>`).join('');
+
+  // Color del territorio
+  const ci=TERR_COLORS[TL.indexOf(t)%TERR_COLORS.length];
+  makeIntelRadar('ct-intel-radar',pp,ci);
+  makeNivelRadar('ct-radar',pp);
+  makePercBar('ct-bar',pp);
+  sv('v-terr');openT(t);
+}
+
+function showSuc(t,s){
+  document.getElementById('bc-st').textContent=t;
+  document.getElementById('bc-st').onclick=()=>showTerr(t);
+  document.getElementById('bc-suc').textContent=s;
+  document.getElementById('vt-suc').textContent=s;
+  const pp=byT[t][s];
+  document.getElementById('vs-suc').textContent=`${pp.length} persona${pp.length!==1?'s':''} · ${t}`;
+
+  document.getElementById('pers-cards').innerHTML=pp.map(p=>
+    `<div class="mini-card" onclick='showPers(${jss(p)})'>
+      <div class="mc-name" title="${p.nombre}">${p.nombre.split(' ').slice(0,3).join(' ')}</div>
+      <div class="mc-chips">${INTELS.slice(0,4).map(i=>`<span class="chip ${nClass(p[i.nv])}">${i.short}</span>`).join('')}</div>
+    </div>`).join('');
+
+  document.getElementById('tb-suc').innerHTML=pp.map(p=>
+    `<tr class="rc" onclick='showPers(${jss(p)})'>
+      <td style="font-weight:700;color:var(--text2)">${p.nombre}</td>
+      ${INTELS.map(i=>`<td><span class="chip ${nClass(p[i.nv])}">${p[i.pc]??'—'}</span></td>`).join('')}
+    </tr>`).join('');
+
+  const ci=TERR_COLORS[TL.indexOf(t)%TERR_COLORS.length];
+  makeIntelRadar('cs-intel-radar',pp,ci);
+  makeNivelRadar('cs-radar',pp);
+  makePercBar('cs-bar',pp);
+  makePersonsBar('cs-persons',pp);
+  makePie('cs-pie',pp);
+  sv('v-suc');openS(t,s);
+}
+
+function showPers(p){
+  if(typeof p==='string')p=JSON.parse(p);
+  document.getElementById('bc-pt').textContent=p.territorio;
+  document.getElementById('bc-pt').onclick=()=>showTerr(p.territorio);
+  document.getElementById('bc-ps').textContent=p.sucursal||'';
+  document.getElementById('bc-ps').onclick=()=>showSuc(p.territorio,p.sucursal);
+  document.getElementById('bc-p').textContent=p.nombre;
+  document.getElementById('p-name').textContent=p.nombre;
+
+  document.getElementById('p-meta').innerHTML=[
+    p.territorio&&`<span class="mtag">📍 ${p.territorio}</span>`,
+    p.sucursal&&`<span class="mtag">🏦 ${p.sucursal}</span>`,
+    p.edad&&`<span class="mtag">🎂 ${p.edad}</span>`,
+  ].filter(Boolean).join('');
+
+  document.getElementById('p-bars').innerHTML=INTELS.map(i=>{
+    const pc=p[i.pc],pct=pc!=null?pc:0;
+    return `<div class="bar-row">
+      <div class="bar-lbl">${i.label}</div>
+      <div class="bar-trk"><div class="bar-fill" style="width:${pct}%;background:${ic(i).solid}"></div></div>
+      <div class="bar-val">${pc!=null?'Pc '+pc:'N/D'}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('intel-grid').innerHTML=INTELS.map(i=>`<div class="ic">
+    <div class="ic-name">${i.label}</div>
+    <div class="ic-score" style="color:${ic(i).solid}">${p[i.key]??'—'}<span style="font-size:13px;color:var(--muted)">/27</span></div>
+    <div class="ic-pc">Percentil: <b>${p[i.pc]??'N/D'}</b></div>
+    <span class="nchip ${nClass(p[i.nv])}">${p[i.nv]||'N/D'}</span>
+  </div>`).join('');
+
+  // Color del territorio para el radar individual
+  const ci=TERR_COLORS[TL.indexOf(p.territorio)%TERR_COLORS.length];
+  makeIntelRadar('cp-radar',[p],ci);
+  makePersonaBar('cp-bar',p);
+  sv('v-pers');
+  document.querySelectorAll('.tp-item').forEach(e=>e.classList.toggle('active',
+    e.dataset.n===p.nombre&&e.dataset.s===(p.sucursal||'')&&e.dataset.t===p.territorio));
+}
+
+// ── TREE ──
+function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+function jss(p){return JSON.stringify(JSON.stringify(p))}
+
+function buildTree(){
+  const tree=document.getElementById('tree');tree.innerHTML='';
+  TL.forEach(t=>{
+    const ss=Object.keys(byT[t]).sort();
+    const tot=Object.values(byT[t]).flat().length;
+    const el=document.createElement('div');
+    el.className='tree-terr';el.id='tt-'+t;
+    el.innerHTML=`<div class="tt-label" onclick="toggleT(this.parentElement,'${esc(t)}')">
+      <span class="arr">▶</span><span>${t}</span><span class="badge">${tot}</span></div>
+      <div class="tt-children" id="ttc-${t}"></div>`;
+    tree.appendChild(el);
+    const ch=document.getElementById('ttc-'+t);
+    ss.forEach(s=>{
+      const pp=byT[t][s];
+      const se=document.createElement('div');
+      se.className='tree-suc';se.id=`tsc-${t}-${s}`;
+      se.innerHTML=`<div class="ts-label" onclick="toggleS(this.parentElement,'${esc(t)}','${esc(s)}')">
+        <span class="arr">▶</span><span>${s}</span><span class="badge">${pp.length}</span></div>
+        <div class="ts-children" id="tpc-${t}-${s}"></div>`;
+      ch.appendChild(se);
+      const pc2=document.getElementById(`tpc-${t}-${s}`);
+      pp.forEach(p=>{
+        const pe=document.createElement('div');
+        pe.className='tp-item';pe.dataset.n=p.nombre;pe.dataset.s=p.sucursal||'';pe.dataset.t=p.territorio;
+        pe.dataset.q=p.nombre.toLowerCase();
+        pe.textContent='👤 '+p.nombre.split(' ').slice(0,3).join(' ');
+        pe.onclick=()=>showPers(p);
+        pc2.appendChild(pe);
+      });
+    });
+  });
+}
+function toggleT(el,t){const w=el.classList.contains('open');el.classList.toggle('open');if(!w)showTerr(t);}
+function toggleS(el,t,s){const w=el.classList.contains('open');el.classList.toggle('open');if(!w)showSuc(t,s);}
+function openT(t){const el=document.getElementById('tt-'+t);if(el)el.classList.add('open');}
+function openS(t,s){openT(t);const el=document.getElementById(`tsc-${t}-${s}`);if(el)el.classList.add('open');}
+function filterTree(q){
+  q=q.toLowerCase().trim();
+  document.querySelectorAll('.tp-item').forEach(e=>{e.style.display=(!q||e.dataset.q.includes(q))?'':'none';});
+  if(q){
+    document.querySelectorAll('.tree-terr').forEach(t=>t.classList.toggle('open',[...t.querySelectorAll('.tp-item')].some(p=>p.style.display!==''&&p.style.display!=='none')));
+    document.querySelectorAll('.tree-suc').forEach(s=>s.classList.toggle('open',[...s.querySelectorAll('.tp-item')].some(p=>p.style.display!==''&&p.style.display!=='none')));
+  }
+}
+
+// ── INIT ──
+function init(){
+  const tot=DATA.length,totS=new Set(DATA.map(p=>p.sucursal)).size;
+  document.getElementById('stats-row').innerHTML=[
+    {n:tot,l:'Personas'},{n:TL.length,l:'Territorios'},
+    {n:totS,l:'Sucursales'},{n:8,l:'Inteligencias'},
+  ].map(s=>`<div class="stat-card"><div class="num">${s.n}</div><div class="lbl">${s.l}</div></div>`).join('');
+
+  // Tarjetas de territorio
+  document.getElementById('terr-cards').innerHTML=TL.map((t,i)=>{
+    const n=Object.values(byT[t]).flat().length,s=Object.keys(byT[t]).length;
+    return `<div class="terr-card" onclick="showTerr('${esc(t)}')" style="border-top:3px solid ${PAL_TERR[i%PAL_TERR.length]}">
+      <div class="tc-name">${t}</div>
+      <div class="tc-info">${n} personas · ${s} sucursal${s!==1?'es':''}</div>
+    </div>`;
+  }).join('');
+
+  // ── Radar de inteligencias por territorio en INICIO ──
+  const grid=document.getElementById('terr-radars-grid');
+  grid.innerHTML='';
+  TL.forEach((t,idx)=>{
+    const pp=Object.values(byT[t]).flat();
+    const ci=TERR_COLORS[idx%TERR_COLORS.length];
+    const canvasId=`radar-terr-${idx}`;
+    const div=document.createElement('div');
+    div.className='tr-card';
+    div.innerHTML=`<h4 onclick="showTerr('${esc(t)}')">${t} <small>${pp.length} personas — clic para detalle</small></h4>
+      <div class="cw-tr"><canvas id="${canvasId}"></canvas></div>`;
+    grid.appendChild(div);
+    // Draw after DOM insert (use setTimeout to ensure canvas is in DOM)
+    setTimeout(()=>makeIntelRadar(canvasId, pp, ci), 0);
+  });
+
+  makeGlobal();
+  makeNivelRadar('cg-radar',DATA);
+  makeTerrBar('cg-terr');
+}
+
+function recargarDashboard(){
+  __buildByT();
+  __rebuildTL();
+  // limpiar charts previos
+  for(const id in CH){ try{CH[id].destroy();}catch(e){} delete CH[id]; }
+  buildTree();
+  init();
+  // volver a la vista de inicio
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const w=document.getElementById('v-welcome'); if(w)w.classList.add('active');
+}
+
+buildTree();
+init();
+
+// ══════════ CARGA DE EXCEL ══════════
+// Mapa de columnas de nivel (texto) -> claves internas
+const __XLSX_MAP = [
+  ['vl','Pc VL','Verbal Linguistica','1. VL'],
+  ['lm','Pc LM','Lógico Matemático','2.LM'],
+  ['m','Pc M','Músical','3. M'],
+  ['e','Pc E','Espacial','4.E'],
+  ['ck','Pc CK','Corporal-kinestésica','5. CK'],
+  ['inter','Pc INTER','Interpersonal','6. INTER'],
+  ['intra','Pc INTRA','Intrapersonal','7. INTRA'],
+  ['n','Pc N','Naturalista','8.N'],
+];
+
+function __norm(s){ return (s==null?'':String(s)).trim(); }
+function __normNombre(s){ return __norm(s).replace(/\s+/g,' ').toLowerCase(); }
+
+function cargarExcel(file){
+  if(!file) return;
+  const st=document.getElementById('xlsx-status');
+  st.className='load'; st.textContent='Leyendo archivo…';
+  const reader=new FileReader();
+  reader.onerror=()=>{ st.className='err'; st.textContent='No se pudo leer el archivo.'; };
+  reader.onload=(ev)=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      const nuevos=__parseWorkbook(wb);
+      if(nuevos.length===0){
+        st.className='err';
+        st.textContent='No se encontraron registros. Verifica que el Excel tenga las hojas "Base de datos" y "Calculo de Resultados".';
+        return;
+      }
+      DATA = nuevos;
+      recargarDashboard();
+      const nT=new Set(DATA.map(p=>p.territorio)).size;
+      const nS=new Set(DATA.map(p=>p.territorio+'|'+p.sucursal)).size;
+      st.className='ok';
+      st.textContent='✔ '+DATA.length+' personas · '+nT+' territorios · '+nS+' sucursales';
+    }catch(err){
+      st.className='err';
+      st.textContent='Error al procesar: '+(err.message||err);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function __parseWorkbook(wb){
+  // localizar hojas por nombre flexible
+  const nombres=wb.SheetNames;
+  function buscarHoja(clave){
+    return nombres.find(n=>n.toLowerCase().includes(clave));
+  }
+  const hCalc = buscarHoja('calculo') || buscarHoja('cálculo');
+  const hBase = buscarHoja('base');
+  if(!hCalc) throw new Error('Falta la hoja "Calculo de Resultados".');
+
+  // --- Calculo de Resultados: nombre + puntajes + percentiles + niveles ---
+  const calcRows = XLSX.utils.sheet_to_json(wb.Sheets[hCalc], {header:1, defval:null});
+  // fila 0 = encabezados; datos desde fila 1
+  const calc = {};
+  for(let r=1;r<calcRows.length;r++){
+    const row=calcRows[r];
+    const nombre=__norm(row[0]);
+    if(!nombre) continue;
+    const obj={nombre};
+    let ci=1; // col 1..8 puntajes, 9..16 percentiles, 17..24 niveles
+    for(let k=0;k<8;k++) obj[__XLSX_MAP[k][0]] = __numOrNull(row[1+k]);
+    for(let k=0;k<8;k++) obj['pc_'+__XLSX_MAP[k][0]] = __numOrNull(row[9+k]);
+    for(let k=0;k<8;k++) obj['nv_'+__XLSX_MAP[k][0]] = __norm(row[17+k])||'ND';
+    calc[__normNombre(nombre)] = obj;
+  }
+
+  // --- Base de datos: nombre -> territorio, sucursal, edad ---
+  const meta = {};
+  if(hBase){
+    const baseRows = XLSX.utils.sheet_to_json(wb.Sheets[hBase], {header:1, defval:null});
+    // localizar columnas por encabezado
+    const head = (baseRows[0]||[]).map(x=>__norm(x).toLowerCase());
+    const colTerr = head.findIndex(h=>h.includes('territorio'));
+    const colNombre = head.findIndex(h=>h.includes('escriba sus nombres'));
+    const colEdad = head.findIndex(h=>h.includes('edad'));
+    // columnas de sucursal: todas las que contienen "sucursal"
+    const colsSuc = [];
+    head.forEach((h,i)=>{ if(h.includes('sucursal')) colsSuc.push(i); });
+    for(let r=1;r<baseRows.length;r++){
+      const row=baseRows[r];
+      const nombre=__norm(colNombre>=0?row[colNombre]:null);
+      if(!nombre) continue;
+      let terr=__norm(colTerr>=0?row[colTerr]:'');
+      let suc='';
+      for(const c of colsSuc){ if(__norm(row[c])){ suc=__norm(row[c]); break; } }
+      meta[__normNombre(nombre)] = {
+        territorio: __normTerr(terr),
+        sucursal: suc||'Sin sucursal',
+        edad: __norm(colEdad>=0?row[colEdad]:'')
+      };
+    }
+  }
+
+  // --- unir por nombre ---
+  const out=[];
+  for(const key in calc){
+    const c=calc[key];
+    const m=meta[key];
+    if(m){
+      c.territorio=m.territorio; c.sucursal=m.sucursal; c.edad=m.edad;
+    }else{
+      c.territorio='SIN TERRITORIO'; c.sucursal='Sin sucursal'; c.edad='';
+    }
+    // ignorar filas sin territorio válido
+    if(c.territorio && c.territorio!==' ') out.push(c);
+  }
+  return out;
+}
+
+function __numOrNull(v){ if(v===''||v==null) return null; const n=Number(v); return isNaN(n)?null:n; }
+function __normTerr(t){
+  const s=__norm(t).toUpperCase();
+  const map={'CAÑAR':'CAÑAR','CANAR':'CAÑAR','ORIENTE':'ORIENTE','EL ORO':'EL_ORO','EL_ORO':'EL_ORO',
+    'AZUAY':'AZUAY','COSTA':'COSTA','LOJA':'LOJA','NORTE':'NORTE'};
+  return map[s] || s || 'SIN TERRITORIO';
+}
+
+(function(){
+  const svg=document.getElementById('ecuador-map');
+  const tooltip=document.getElementById('map-tooltip');
+  const info=document.getElementById('map-info');
+  if(!svg)return;
+  const byT={};
+  DATA.forEach(p=>{
+    const t=p.territorio,s=p.sucursal;
+    if(!byT[t])byT[t]={};
+    if(!byT[t][s])byT[t][s]=[];
+    byT[t][s].push(p);
+  });
+  const INTELS_M=[
+    {key:'pc_vl',label:'Verbal-Lingüística'},
+    {key:'pc_lm',label:'Lógico-Matemática'},
+    {key:'pc_m',label:'Musical'},
+    {key:'pc_e',label:'Espacial'},
+    {key:'pc_ck',label:'Corp-Kinestésica'},
+    {key:'pc_inter',label:'Interpersonal'},
+    {key:'pc_intra',label:'Intrapersonal'},
+    {key:'pc_n',label:'Naturalista'},
+  ];
+  svg.querySelectorAll('.map-marker').forEach(marker=>{
+    const suc=marker.dataset.suc,terr=marker.dataset.terr,count=parseInt(marker.dataset.count);
+    marker.addEventListener('mouseenter',()=>{
+      const svgR=svg.getBoundingClientRect();
+      const panelR=document.getElementById('map-panel').getBoundingClientRect();
+      const m=marker.getAttribute('transform').match(/translate\(([^,]+),([^)]+)\)/);
+      const cx=parseFloat(m[1]),cy=parseFloat(m[2]);
+      const tx=(cx/640)*svgR.width+svgR.left-panelR.left;
+      const ty=(cy/580)*svgR.height+svgR.top-panelR.top;
+      tooltip.style.left=(tx+14)+'px';
+      tooltip.style.top=(ty-14)+'px';
+      tooltip.innerHTML=`<b>${suc}</b><br><span style="opacity:.8">${terr.replace('_',' ')} · ${count} persona${count!==1?'s':''}</span>`;
+      tooltip.style.display='block';
+      const pp=byT[terr]?.[suc]||[];
+      const top=INTELS_M.map(i=>({label:i.label,avg:Math.round(pp.map(p=>p[i.key]||0).reduce((a,b)=>a+b,0)/pp.length)})).sort((a,b)=>b.avg-a.avg).slice(0,3);
+      info.innerHTML=`<b style="color:var(--accent2);font-size:12px">${suc}</b> <span style="color:var(--muted)">· ${terr.replace('_',' ')}</span><br><span style="color:var(--muted)">${count} persona${count!==1?'s':''}</span><div style="margin-top:6px;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Top 3 inteligencias</div>${top.map(t=>`<div style="font-size:11px;color:var(--text2);margin-top:3px">• ${t.label}: <b>Pc ${t.avg}</b></div>`).join('')}<div style="margin-top:8px"><button onclick="showSuc('${terr}','${suc}')" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;font-weight:700">Ver sucursal →</button></div>`;
+    });
+    marker.addEventListener('mouseleave',()=>{ tooltip.style.display='none'; });
+    marker.addEventListener('click',()=>showSuc(terr,suc));
+  });
+})();
+
+</script>
+</body>
+</html>
